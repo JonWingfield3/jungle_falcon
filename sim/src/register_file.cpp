@@ -8,7 +8,7 @@ RegisterFile::RegisterFile() { registers_.fill(0); }
 
 RegisterFile::~RegisterFile() {}
 
-uint32_t RegisterFile::Read(Register reg) const {
+uint64_t RegisterFile::Read(Register reg) const {
   if (reg == X0) {
     return 0;
   } else {
@@ -16,7 +16,7 @@ uint32_t RegisterFile::Read(Register reg) const {
   }
 }
 
-void RegisterFile::Write(Register reg, uint32_t write_val) {
+void RegisterFile::Write(Register reg, uint64_t write_val) {
   if (reg == X0) {
     std::cerr << "Writing to X0!" << std::endl;
   } else {
