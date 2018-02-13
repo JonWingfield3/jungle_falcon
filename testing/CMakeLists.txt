@@ -5,6 +5,7 @@ find_package(GTest REQUIRED)
 find_package(glog 0.3.5 REQUIRED)
 find_package(gflags REQUIRED)
 
+set(GTEST_INCLUDE_DIRS "/usr/local/src/googletest-master/googletest/include")
 set(RISCV_SIM_DIR ../sim)
 set(RISCV_ASM_DIR ../asm)
 
@@ -16,6 +17,7 @@ set(SIM_INCLUDE_DIR ${RISCV_SIM_DIR}/include)
 set(SIM_SOURCE_DIR ${RISCV_SIM_DIR}/src)
 
 include_directories(
+  ${GTEST_INCLUDE_DIRS}
   ${TESTING_INCLUDE_DIR}
   ${PROJ_INCLUDE_DIR}
   ${SIM_INCLUDE_DIR})
@@ -33,7 +35,8 @@ add_executable(riscv_tests
   ${TESTING_HEADERS}
   ${TESTING_SOURCES})
 target_link_libraries(riscv_tests 
-  gtest
+  ${GTEST_LIBRARIES}
+  ${GTEST_MAIN_LIBRARIES}
   glog::glog
   gflags
   pthread)
