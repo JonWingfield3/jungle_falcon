@@ -18,11 +18,29 @@ set(CMAKE_CXX_FLAGS "--std=c++11 ${CMAKE_CXX_FLAGS}")
 list(APPEND LINK_FLAGS "")
 
 list(APPEND SRC_FILES
+  ${SOURCE_DIR}/alu.cpp
+  ${SOURCE_DIR}/cpu.cpp
+  ${SOURCE_DIR}/instruction_factory.cpp
+  ${SOURCE_DIR}/memory.cpp
+  ${SOURCE_DIR}/pipeline.cpp
   ${SOURCE_DIR}/register_file.cpp
 )
 
 list(APPEND HEADER_FILES
+  ${INCLUDE_DIR}/alu.hpp
+  ${INCLUDE_DIR}/b_type_instructions.hpp
+  ${INCLUDE_DIR}/cpu.hpp
+  ${INCLUDE_DIR}/instructions.hpp
+  ${INCLUDE_DIR}/instruction_factory.hpp
+  ${INCLUDE_DIR}/i_type_instructions.hpp
+  ${INCLUDE_DIR}/j_type_instructions.hpp
+  ${INCLUDE_DIR}/memory.hpp
+  ${INCLUDE_DIR}/pipeline.hpp
   ${INCLUDE_DIR}/register_file.hpp
+  ${INCLUDE_DIR}/riscv_defs.hpp
+  ${INCLUDE_DIR}/r_type_instructions.hpp
+  ${INCLUDE_DIR}/s_type_instructions.hpp
+  ${INCLUDE_DIR}/u_type_instructions.hpp
 )
 
 include_directories(${INCLUDE_DIR}

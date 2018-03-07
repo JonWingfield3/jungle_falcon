@@ -6,20 +6,16 @@
 
 RegisterFile::RegisterFile() { registers_.fill(0); }
 
-RegisterFile::~RegisterFile() {}
-
-uint64_t RegisterFile::Read(Register reg) const {
-  if (reg == X0) {
-    return 0;
-  } else {
-    return registers_.at(static_cast<unsigned>(reg));
-  }
+reg_data_t RegisterFile::Read(Register reg) const {
+  const reg_data_t reg_data = registers_.at(static_cast<unsigned>(reg));
+  VLOG(4) << std::hex << std::showbase << "Read " << reg_data << " from reg "
+          << static_cast<int>(reg);
+  return reg_data;
 }
 
-void RegisterFile::Write(Register reg, uint64_t write_val) {
-  if (reg == X0) {
-    std::cerr << "Writing to X0!" << std::endl;
-  } else {
-    registers_.at(static_cast<unsigned>(reg)) = write_val;
-  }
+void RegisterFile::Write(Register reg, reg_data_t write_data) {
+  CHECK(reg != Register::X0) << "Write to X0!";
+  registers_.at(static_cast<unsigned>(reg)) = write_data;
+  VLOG(4) << std::hex << std::showbase << "Wrote " << write_data << " to reg "
+          << static_cast<int>(reg);
 }

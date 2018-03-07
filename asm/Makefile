@@ -1,20 +1,44 @@
-all: test.hexdump
+BUILD_DIR = build
 
-clean:
-	rm -f test.o test.bin test.hexdump test.out test.map
+AS = riscv64-unknown-elf-as
+LD = riscv64-unknown-elf-ld
+OBJCOPY = riscv64-unknown-elf-objcopy
 
-test.o: test.s
-	~/Code/riscv/bin/riscv64-unknown-elf-as -o $@ $<
+AS_FLAGS = 
+LD_FLAGS := 
+ASM_FILES = $(shell ls *.s)
 
-test.out : test.o
-	riscv64-unknown-elf-ld -o $@  $<
+OBJ_FILENAMES = $(ASM_FILES:.s=.o)
+OUT_FILENAMES = $(ASM_FILES:.s=.out)
+BIN_FILENAMES = $(ASM_FILES:.s=.bin)
+HEX_FILENAMES = $(ASM_FILES:.s=.hex)
+ALL_FILENAMES = $(OBJ_FILENAMES) $(OUT_FILENAMES)\
+                $(BIN_FILENAMES) $(HEX_FILENAMES)
 
-test.map : test.o
-	riscv64-unknown-elf-ld -Map=$@ $<
+OBJ_FILES = $(addprefix $(BUILD_DIR)/,$(OBJ_FILENAMES))
+OUT_FILES = $(addprefix $(BUILD_DIR)/,$(OUT_FILENAMES))
+BIN_FILES = $(addprefix $(BUILD_DIR)/,$(BIN_FILENAMES))
+HEX_FILES = $(addprefix $(BUILD_DIR)/,$(HEX_FILENAMES))
+ALL = $(OBJ_FILES) $(OUT_FILES) $(MAP_FILES)\
+      $(BIN_FILES) $(HEX_FILES)
 
-test.bin: test.out
-	riscv64-unknown-elf-objcopy -O binary $< $@
+.PHONY : all
+all : $(ALL_FILENAMES)
+	mv $(ALL_FILENAMES) $(BUILD_DIR)/
+ 
+.PHONY : clean
+clean :
+	rm -f ./$(BUILD_DIR)/*
 
-test.hexdump: test.bin
+%.o: %.s
+	$(AS) $(AS_FLAGS) $< -o $@
+
+%.out : %.o
+	$(LD) $(LD_FLAGS) -Map=$(BUILD_DIR)/$(basename $(@F)).map $< -o $@
+
+%.bin : %.out
+	$(OBJCOPY) -O binary $< $@
+
+%.hex : %.bin
 	xxd -e $< > $@
 

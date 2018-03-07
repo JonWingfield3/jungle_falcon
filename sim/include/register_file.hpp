@@ -3,14 +3,14 @@
 #include <array>
 #include <cstdint>
 
+#include <memory.hpp>
+#include <riscv_defs.hpp>
+
 class RegisterFile {
  public:
   RegisterFile();
-  ~RegisterFile();
 
-  static constexpr int NUM_CPU_REGISTERS = 32;
-
-  enum Register {
+  enum class Register {
     X0,
     X1,
     LR = X1,
@@ -49,13 +49,37 @@ class RegisterFile {
     X28,
     X29,
     X30,
-    X31
+    X31,
   };
+  static constexpr int NumCPURegisters = 32;
 
-  uint64_t Read(Register reg) const;
-  void Write(Register reg, uint64_t write_val);
+  reg_data_t Read(Register reg) const;
+  void Write(Register reg, reg_data_t write_data);
 
  private:
-  friend class RegisterFileTests;
-  std::array<uint64_t, NUM_CPU_REGISTERS> registers_;
+  std::array<reg_data_t, NumCPURegisters> registers_;
+};
+
+class ProgramCounter {
+ public:
+  ProgramCounter(mem_addr_t entry_point = 0) : program_counter_(entry_point) {}
+
+  ProgramCounter& operator++() {
+    program_counter_ += 4;
+    return *this;
+  }
+
+  ProgramCounter& operator+=(mem_offset_t offset) {
+    program_counter_ += offset;
+  }
+
+  mem_addr_t pc() const { return program_counter_; }
+
+  //  ProgramCounter& operator=(mem_addr_t mem_addr) {
+  //    this->program_counter_ = mem_addr;
+  //    return *this;
+  //  }
+
+ private:
+  mem_addr_t program_counter_ = 0;
 };

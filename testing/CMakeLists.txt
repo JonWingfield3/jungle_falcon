@@ -5,7 +5,8 @@ find_package(GTest REQUIRED)
 find_package(glog 0.3.5 REQUIRED)
 find_package(gflags REQUIRED)
 
-set(GTEST_INCLUDE_DIRS "/usr/local/src/googletest-master/googletest/include")
+set(GTEST_INCLUDE_DIRS "/usr/local/googletest/googletest/include")
+
 set(RISCV_SIM_DIR ../sim)
 set(RISCV_ASM_DIR ../asm)
 
@@ -22,13 +23,29 @@ include_directories(
   ${PROJ_INCLUDE_DIR}
   ${SIM_INCLUDE_DIR})
 
-set(TESTING_HEADERS
-  ${TESTING_INCLUDE_DIR}/register_file_tests.hpp
-  ${SIM_INCLUDE_DIR}/register_file.hpp)
-
 set(TESTING_SOURCES
-  ${TESTING_SOURCE_DIR}/register_file_tests.cpp
-  ${SIM_SOURCE_DIR}/register_file.cpp)
+  ${SIM_SOURCE_DIR}/alu.cpp
+  ${SIM_SOURCE_DIR}/instruction_factory.cpp
+  ${SIM_SOURCE_DIR}/memory.cpp
+  ${SIM_SOURCE_DIR}/pipeline.cpp
+  ${SIM_SOURCE_DIR}/register_file.cpp
+)
+
+set(TESTING_HEADERS
+  ${SIM_INCLUDE_DIR}/alu.hpp
+  ${SIM_INCLUDE_DIR}/b_type_instructions.hpp
+  ${SIM_INCLUDE_DIR}/instructions.hpp
+  ${SIM_INCLUDE_DIR}/instruction_factory.hpp
+  ${SIM_INCLUDE_DIR}/i_type_instructions.hpp
+  ${SIM_INCLUDE_DIR}/j_type_instructions.hpp
+  ${SIM_INCLUDE_DIR}/memory.hpp
+  ${SIM_INCLUDE_DIR}/pipeline.hpp
+  ${SIM_INCLUDE_DIR}/register_file.hpp
+  ${SIM_INCLUDE_DIR}/riscv_defs.hpp
+  ${SIM_INCLUDE_DIR}/r_type_instructions.hpp
+  ${SIM_INCLUDE_DIR}/s_type_instructions.hpp
+  ${SIM_INCLUDE_DIR}/u_type_instructions.hpp
+)
 
 add_executable(riscv_tests
   ${TESTING_SOURCE_DIR}/riscv_tests.cpp
