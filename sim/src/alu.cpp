@@ -2,6 +2,7 @@
 
 #include <instructions.hpp>
 #include <pipeline.hpp>
+#include <riscv_defs.hpp>
 
 reg_data_t ALU::Exec(Funct3 funct3, reg_data_t op1, reg_data_t op2,
                      Funct7 funct7) {

@@ -30,13 +30,13 @@ class RTypeInstructionInterface : public InstructionInterface {
     r_type_format.word = instr_;
 
     Rd_.first = static_cast<RegisterFile::Register>(r_type_format.rd);
-    Rd_.second = reg_file_.Read(Rd_.first);
+    reg_file_.Read(Rd_);
 
     Rs1_.first = static_cast<RegisterFile::Register>(r_type_format.rs1);
-    Rs1_.second = reg_file_.Read(Rs1_.first);
+    reg_file_.Read(Rs1_);
 
     Rs2_.first = static_cast<RegisterFile::Register>(r_type_format.rs2);
-    Rs2_.second = reg_file_.Read(Rs2_.first);
+    reg_file_.Read(Rs2_);
 
     dependencies_.set(r_type_format.rd);
     dependencies_.set(r_type_format.rs1);
@@ -54,14 +54,14 @@ class RTypeInstructionInterface : public InstructionInterface {
   void WriteBack() final {
     VLOG(5) << name_ << " Write Back stage: writing " << Rd_.second
             << " to Register " << Rd_.second;
-    reg_file_.Write(Rd_.first, Rd_.second);
+    reg_file_.Write(Rd_);
   }
 
  protected:
   RegisterFile& reg_file_;
-  RegDataPair Rd_;
-  RegDataPair Rs1_;
-  RegDataPair Rs2_;
+  RegisterFile::RegDataPair Rd_;
+  RegisterFile::RegDataPair Rs1_;
+  RegisterFile::RegDataPair Rs2_;
 };
 
 class SlliInstruction : public RTypeInstructionInterface {

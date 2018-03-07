@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <bitset>
 #include <cstdint>
 
 #include <memory.hpp>
@@ -53,8 +54,18 @@ class RegisterFile {
   };
   static constexpr int NumCPURegisters = 32;
 
+  using RegDataPair = std::pair<RegisterFile::Register, reg_data_t>;
+  using RegisterMask = std::bitset<RegisterFile::NumCPURegisters>;
+
   reg_data_t Read(Register reg) const;
+  void Read(RegDataPair& reg_data_pair) const {
+    reg_data_pair.second = Read(reg_data_pair.first);
+  }
+
   void Write(Register reg, reg_data_t write_data);
+  void Write(RegDataPair reg_data_pair) {
+    Write(reg_data_pair.first, reg_data_pair.second);
+  }
 
  private:
   std::array<reg_data_t, NumCPURegisters> registers_;
@@ -74,11 +85,6 @@ class ProgramCounter {
   }
 
   mem_addr_t pc() const { return program_counter_; }
-
-  //  ProgramCounter& operator=(mem_addr_t mem_addr) {
-  //    this->program_counter_ = mem_addr;
-  //    return *this;
-  //  }
 
  private:
   mem_addr_t program_counter_ = 0;

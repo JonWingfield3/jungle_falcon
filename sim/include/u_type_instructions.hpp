@@ -28,18 +28,14 @@ class UTypeInstructionInterface : public InstructionInterface {
     u_type_format.word = instr_;
 
     Rd_.first = static_cast<RegisterFile::Register>(u_type_format.rd);
-    Rd_.second = reg_file_.Read(Rd_.first);
-    VLOG(3) << name_ << ": rd = " << u_type_format.rd << ", " << Rd_.second;
+    reg_file_.Read(Rd_);
 
     imm_ = static_cast<imm_t>(u_type_format.imm31_12 << 12);
-    VLOG(3) << name_ << ": imm = " << imm_;
   }
-
-  RegisterMask Dependencies() { return dependencies_; }
 
  protected:
   RegisterFile& reg_file_;
   ProgramCounter& pc_;
-  RegDataPair Rd_;
+  RegisterFile::RegDataPair Rd_;
   imm_t imm_;
 };

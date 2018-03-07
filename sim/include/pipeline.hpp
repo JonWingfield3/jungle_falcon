@@ -11,13 +11,11 @@
 
 class Pipeline {
  public:
-  explicit Pipeline(RegisterFile& reg_file, ProgramCounter& pc,
-                    MainMemory& mem) {
-    instruction_factory_(reg_file, pc, mem);
-  }
+  explicit Pipeline(RegisterFile& reg_file, ProgramCounter& pc, MemoryPtr mem)
+      : mem_(mem), pc_(pc), instruction_factory_(reg_file, pc, mem) {}
 
   void Fetch() {
-    const instr_t instr = mem.Read<instr_t>(pc.pc());
+    const instr_t instr = mem_->Read<instr_t>(pc_.pc());
     InstructionPtr instr_ptr = instruction_factory_.Create(instr);
 
     if (!instruction_queue_.empty()) {
@@ -39,4 +37,6 @@ class Pipeline {
   using InstructionQueue = std::deque<InstructionPtr>;
   InstructionQueue instruction_queue_;
   InstructionFactory instruction_factory_;
-}
+  MemoryPtr mem_;
+  ProgramCounter& pc_;
+};

@@ -29,10 +29,10 @@ class ITypeInstructionInterface : public InstructionInterface {
     i_type_format.word = instr_;
 
     Rd_.first = static_cast<RegisterFile::Register>(i_type_format.rd);
-    Rd_.second = reg_file_.Read(Rd_.first);
+    reg_file_.Read(Rd_);
 
     Rs1_.first = static_cast<RegisterFile::Register>(i_type_format.rs1);
-    Rs1_.second = reg_file_.Read(Rs1_.first);
+    reg_file_.Read(Rs1_);
 
     imm_ = static_cast<imm_t>(i_type_format.imm11_0);
 
@@ -51,13 +51,13 @@ class ITypeInstructionInterface : public InstructionInterface {
   void WriteBack() final {
     VLOG(5) << name_ << " Write Back stage: writing " << Rd_.second
             << " to Register " << Rd_.second;
-    reg_file_.Write(Rd_.first, Rd_.second);
+    reg_file_.Write(Rd_);
   }
 
  protected:
   RegisterFile& reg_file_;
-  RegDataPair Rd_;
-  RegDataPair Rs1_;
+  RegisterFile::RegDataPair Rd_;
+  RegisterFile::RegDataPair Rs1_;
   imm_t imm_;
 };
 

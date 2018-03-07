@@ -72,9 +72,6 @@ enum class Funct7 {
 
 class InstructionInterface {
  public:
-  using RegisterMask = std::bitset<RegisterFile::NumCPURegisters>;
-  using RegDataPair = std::pair<RegisterFile::Register, reg_data_t>;
-
   explicit InstructionInterface(instr_t instr) : instr_(instr) {}
 
   union PACKED GenericInstructionFormat {
@@ -104,12 +101,12 @@ class InstructionInterface {
   virtual void MemoryAccess() = 0;
   virtual void WriteBack() = 0;
 
-  RegisterMask Dependencies() { return dependencies_; }
+  RegisterFile::RegisterMask Dependencies() { return dependencies_; }
 
  protected:
   size_t current_stage_;
   std::string name_;
   instr_t instr_;
   InstrTypes instr_type_;
-  RegisterMask dependencies_;
+  RegisterFile::RegisterMask dependencies_;
 };
