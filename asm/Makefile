@@ -1,8 +1,8 @@
 BUILD_DIR = build
 
-AS = riscv64-unknown-elf-as
-LD = riscv64-unknown-elf-ld
-OBJCOPY = riscv64-unknown-elf-objcopy
+AS = /usr/local/riscv/bin/riscv64-unknown-elf-as
+LD = /usr/local/riscv/bin/riscv64-unknown-elf-ld
+OBJCOPY = /usr/local/riscv/bin/riscv64-unknown-elf-objcopy
 
 AS_FLAGS = 
 LD_FLAGS := 
@@ -29,6 +29,7 @@ all : $(ALL_FILENAMES)
 .PHONY : clean
 clean :
 	rm -f ./$(BUILD_DIR)/*
+	rm -f ./*.o
 
 %.o: %.s
 	$(AS) $(AS_FLAGS) $< -o $@

@@ -15,23 +15,71 @@ InstructionFactory::InstructionPtr InstructionFactory::Create(instr_t instr) {
   generic_instr_format.word = instr;
 
   OpCode op = static_cast<OpCode>(generic_instr_format.opcode);
-  VLOG(4) << "Instruction opcode = " << std::showbase << std::hex
-          << generic_instr_format.opcode << "   " << generic_instr_format.upper;
+  VLOG(4) << "Creating InstructionPtr, instruction opcode = " << std::showbase
+          << std::hex << generic_instr_format.opcode;
   switch (op) {
     case OpCode::LUI:
-      break;
+      return std::make_shared<LuiInstruction>(LuiInstruction(instr, reg_file_));
     case OpCode::AUIPC:
-      break;
+      return std::make_shared<AuipcInstruction>(
+          AuipcInstruction(instr, reg_file_, pc_));
     case OpCode::JAL:
-      break;
+      return std::make_shared<JalInstruction>(
+          JalInstruction(instr, reg_file_, pc_));
     case OpCode::JALR:
-    case OpCode::Lx:
-    case OpCode::Bxx:
-      break;
+      return std::make_shared<JalrInstruction>(
+          JalrInstruction(instr, reg_file_, pc_));
+    case OpCode::Lx: {
+      ITypeInstructionInterface::ITypeInstructionFormat i_type_format;
+      i_type_format.word = instr;
+      const Funct3 funct3 = static_cast<Funct3>(i_type_format.funct3);
+      switch (funct3) {
+        case Funct3::LB:
+          return std::make_shared<LbInstruction>(
+              LbInstruction(instr, reg_file_, mem_));
+        case Funct3::LBU:
+          return std::make_shared<LbuInstruction>(
+              LbuInstruction(instr, reg_file_, mem_));
+        case Funct3::LH:
+          return std::make_shared<LhInstruction>(
+              LhInstruction(instr, reg_file_, mem_));
+        case Funct3::LHU:
+          return std::make_shared<LhuInstruction>(
+              LhuInstruction(instr, reg_file_, mem_));
+        case Funct3::LW:
+          return std::make_shared<LwInstruction>(
+              LwInstruction(instr, reg_file_, mem_));
+      }
+    } break;
+    case OpCode::Bxx: {
+      BTypeInstructionInterface::BTypeInstructionFormat b_type_format;
+      b_type_format.word = instr;
+      const Funct3 funct3 = static_cast<Funct3>(b_type_format.funct3);
+      switch (funct3) {
+        case Funct3::BEQ:
+          return std::make_shared<BeqInstruction>(
+              BeqInstruction(instr, reg_file_, pc_));
+        case Funct3::BGE:
+          return std::make_shared<BgeInstruction>(
+              BgeInstruction(instr, reg_file_, pc_));
+        case Funct3::BGEU:
+          return std::make_shared<BgeuInstruction>(
+              BgeuInstruction(instr, reg_file_, pc_));
+        case Funct3::BLT:
+          return std::make_shared<BltInstruction>(
+              BltInstruction(instr, reg_file_, pc_));
+        case Funct3::BLTU:
+          return std::make_shared<BltuInstruction>(
+              BltuInstruction(instr, reg_file_, pc_));
+        case Funct3::BNE:
+          return std::make_shared<BneInstruction>(
+              BneInstruction(instr, reg_file_, pc_));
+      }
+    } break;
     case OpCode::ITypeArithmeticAndLogical: {
       ITypeInstructionInterface::ITypeInstructionFormat i_type_format;
       i_type_format.word = instr;
-      Funct3 funct3 = static_cast<Funct3>(i_type_format.funct3);
+      const Funct3 funct3 = static_cast<Funct3>(i_type_format.funct3);
       switch (funct3) {
         case Funct3::ADDI:
           return std::make_shared<AddiInstruction>(
@@ -54,24 +102,35 @@ InstructionFactory::InstructionPtr InstructionFactory::Create(instr_t instr) {
         case Funct3::SLLI:
           return std::make_shared<SlliInstruction>(
               SlliInstruction(instr, reg_file_));
-        case Funct3::SRLI:  // || SRAI
-          if (funct3 == Funct3::SRLI) {
+        case Funct3::SRLI: {  // || SRAI
+                              // Has I Type Op Code and R Type encoding
+          RTypeInstructionInterface::RTypeInstructionFormat r_type_format;
+          r_type_format.word = instr;
+          const Funct7 funct7 = static_cast<Funct7>(r_type_format.funct7);
+          if (funct7 == Funct7::SRLI) {
             return std::make_shared<SrliInstruction>(
                 SrliInstruction(instr, reg_file_));
           } else {
             return std::make_shared<SraiInstruction>(
                 SraiInstruction(instr, reg_file_));
           }
+        }
       }
     } break;
     case OpCode::RTypeArithmeticAndLogical: {
       RTypeInstructionInterface::RTypeInstructionFormat r_type_format;
       r_type_format.word = instr;
-      Funct3 funct3 = static_cast<Funct3>(r_type_format.funct3);
+      const Funct3 funct3 = static_cast<Funct3>(r_type_format.funct3);
+      const Funct7 funct7 = static_cast<Funct7>(r_type_format.funct7);
       switch (funct3) {
-        case Funct3::ADD:
-          return std::make_shared<AddInstruction>(
-              AddInstruction(instr, reg_file_));
+        case Funct3::ADD:  // || SUB
+          if (funct7 == Funct7::ADD) {
+            return std::make_shared<AddInstruction>(
+                AddInstruction(instr, reg_file_));
+          } else {
+            return std::make_shared<SubInstruction>(
+                SubInstruction(instr, reg_file_));
+          }
         case Funct3::SLL:
           return std::make_shared<SllInstruction>(
               SllInstruction(instr, reg_file_));
@@ -112,8 +171,8 @@ InstructionFactory::InstructionPtr InstructionFactory::Create(instr_t instr) {
       }
     } break;
     default:
-      LOG(FATAL) << "Unable to match instruction!";
-      break;
+      VLOG(1) << "Unrecognized instruction: " << std::hex << std::showbase
+              << instr << " could not create command object";
+      return nullptr;
   }
-  return nullptr;
 }

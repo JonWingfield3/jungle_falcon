@@ -1,9 +1,9 @@
 #pragma once
 
-#include <cstdint>
-
 #include <bitset>
+#include <cstdint>
 #include <memory>
+
 #include <register_file.hpp>
 #include <riscv_defs.hpp>
 
@@ -34,6 +34,7 @@ enum class Funct3 {
   LH = 0b001,
   LW = 0b010,
   LBU = 0b100,
+  LHU = 0b101,
   SB = 0b000,
   SH = 0b001,
   SW = 0b010,
@@ -73,6 +74,7 @@ enum class Funct7 {
 class InstructionInterface {
  public:
   explicit InstructionInterface(instr_t instr) : instr_(instr) {}
+  virtual ~InstructionInterface() {}
 
   union PACKED GenericInstructionFormat {
     struct PACKED {
@@ -85,28 +87,32 @@ class InstructionInterface {
   static_assert(sizeof(GenericInstructionFormat) == 4,
                 "Generic Instruction size != 4");
 
-  virtual void Run() {
-#if defined(__INSTRUCTION_ACCURATE__)
+  virtual void ExecuteCycle() {
     Decode();
     Execute();
     MemoryAccess();
     WriteBack();
-#elif defined(__CYCLE_ACCURATE__)
-
-#endif
   }
 
-  virtual void Decode() = 0;
-  virtual void Execute() = 0;
-  virtual void MemoryAccess() = 0;
-  virtual void WriteBack() = 0;
+  virtual void Decode() {
+    SetInstructionName();
+    VLOG(1) << instruction_;
+    VLOG(3) << "Decode: Resolved instruction as " << instruction_;
+  }
 
-  RegisterFile::RegisterMask Dependencies() { return dependencies_; }
+  virtual void Execute() { VLOG(3) << "Execute stage doing nothing"; }
+  virtual void MemoryAccess() { VLOG(3) << "MemoryAccess stage doing nothing"; }
+  virtual void WriteBack() { VLOG(3) << "WriteBack stage doing nothing"; }
+
+  RegisterFile::RegisterMask Dependencies() const { return dependencies_; }
+
+  const std::string& Instruction() const { return instruction_; }
 
  protected:
-  size_t current_stage_;
+  virtual void SetInstructionName() = 0;
+
   std::string name_;
+  std::string instruction_;
   instr_t instr_;
-  InstrTypes instr_type_;
   RegisterFile::RegisterMask dependencies_;
 };

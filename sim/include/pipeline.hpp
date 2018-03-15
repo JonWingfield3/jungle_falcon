@@ -9,34 +9,38 @@
 #include <memory.hpp>
 #include <register_file.hpp>
 
+class Pipeline;
+using PipelinePtr = std::shared_ptr<Pipeline>;
+
 class Pipeline {
  public:
-  explicit Pipeline(RegisterFile& reg_file, ProgramCounter& pc, MemoryPtr mem)
+  explicit Pipeline(RegFilePtr reg_file, PcPtr pc, MemoryPtr mem)
       : mem_(mem), pc_(pc), instruction_factory_(reg_file, pc, mem) {}
 
-  void Fetch() {
-    const instr_t instr = mem_->Read<instr_t>(pc_.pc());
-    InstructionPtr instr_ptr = instruction_factory_.Create(instr);
+  enum class Stages { Fetch, Decode, Execute, MemoryAccess, WriteBack };
 
-    if (!instruction_queue_.empty()) {
-      instruction_queue_.pop_back();
+  int Fetch();
+  void ExecuteCycle();
+
+  std::vector<std::string> Instruction() const {
+    std::vector<std::string> instruction_names_;
+    for (const auto& instruction : instruction_queue_) {
+      instruction_names_.push_back(instruction->Instruction());
     }
-    instruction_queue_.push_front(instr_ptr);
   }
 
-  void Run() {
-#if defined(__INSTRUCTION_ACCURATE__)
-    InstructionPtr instr_ptr = instruction_queue_.front();
-    instr_ptr->Run();
-#elif defined(__CYCLE_ACCURATE__)
-#endif
+  std::string Instruction(Stages stage) const {
+    return instruction_queue_.at(static_cast<int>(stage))->Instruction();
   }
+
+  void Reset() { instruction_queue_.clear(); }
 
  private:
   using InstructionPtr = std::shared_ptr<InstructionInterface>;
   using InstructionQueue = std::deque<InstructionPtr>;
+
   InstructionQueue instruction_queue_;
   InstructionFactory instruction_factory_;
   MemoryPtr mem_;
-  ProgramCounter& pc_;
+  PcPtr pc_;
 };

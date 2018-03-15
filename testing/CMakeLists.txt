@@ -28,8 +28,7 @@ set(TESTING_SOURCES
   ${SIM_SOURCE_DIR}/instruction_factory.cpp
   ${SIM_SOURCE_DIR}/memory.cpp
   ${SIM_SOURCE_DIR}/pipeline.cpp
-  ${SIM_SOURCE_DIR}/register_file.cpp
-)
+  ${SIM_SOURCE_DIR}/register_file.cpp)
 
 set(TESTING_HEADERS
   ${SIM_INCLUDE_DIR}/alu.hpp
@@ -44,8 +43,7 @@ set(TESTING_HEADERS
   ${SIM_INCLUDE_DIR}/riscv_defs.hpp
   ${SIM_INCLUDE_DIR}/r_type_instructions.hpp
   ${SIM_INCLUDE_DIR}/s_type_instructions.hpp
-  ${SIM_INCLUDE_DIR}/u_type_instructions.hpp
-)
+  ${SIM_INCLUDE_DIR}/u_type_instructions.hpp)
 
 add_executable(riscv_tests
   ${TESTING_SOURCE_DIR}/riscv_tests.cpp

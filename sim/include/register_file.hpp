@@ -3,9 +3,17 @@
 #include <array>
 #include <bitset>
 #include <cstdint>
+#include <iostream>
+#include <memory>
 
 #include <memory.hpp>
 #include <riscv_defs.hpp>
+
+class RegisterFile;
+using RegFilePtr = std::shared_ptr<RegisterFile>;
+
+class ProgramCounter;
+using PcPtr = std::shared_ptr<ProgramCounter>;
 
 class RegisterFile {
  public:
@@ -67,6 +75,16 @@ class RegisterFile {
     Write(reg_data_pair.first, reg_data_pair.second);
   }
 
+  void DumpRegisters(std::vector<Register> registers);
+
+  void Reset() { registers_.fill(0); }
+
+  friend std::ostream& operator<<(std::ostream& stream,
+                                  RegDataPair reg_data_pair) {
+    stream << "(x" << static_cast<int>(reg_data_pair.first) << ", "
+           << reg_data_pair.second << ")";
+  }
+
  private:
   std::array<reg_data_t, NumCPURegisters> registers_;
 };
@@ -76,7 +94,7 @@ class ProgramCounter {
   ProgramCounter(mem_addr_t entry_point = 0) : program_counter_(entry_point) {}
 
   ProgramCounter& operator++() {
-    program_counter_ += 4;
+    program_counter_ += sizeof(instr_t);
     return *this;
   }
 
@@ -84,7 +102,20 @@ class ProgramCounter {
     program_counter_ += offset;
   }
 
-  mem_addr_t pc() const { return program_counter_; }
+  mem_addr_t Reg() const { return program_counter_; }
+
+  void Branch(int offset) {
+    const int signed_pc = offset - 4 + static_cast<int>(program_counter_);
+    CHECK(signed_pc >= 0) << "PC went negative: " << signed_pc;
+    program_counter_ = static_cast<reg_data_t>(signed_pc);
+  }
+
+  void Jump(mem_addr_t jump_addr) {
+    program_counter_ = jump_addr - 4;
+    VLOG(4) << "Jumping to address " << jump_addr;
+  }
+
+  void Reset() { program_counter_ = 0; }
 
  private:
   mem_addr_t program_counter_ = 0;

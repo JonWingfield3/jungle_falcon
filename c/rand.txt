@@ -1,0 +1,5 @@
+/usr/local/riscv/bin/riscv64-unknown-elf-gcc start.s test.c  -o test -O3 -nostartfiles -nostdlib --save-temps  -Wl,-Ttext-segment,0 -Wl,-e_start -mabi=ilp32 -march=rv32i
+
+/usr/local/riscv/bin/riscv64-unknown-elf-objcopy -O binary test test.bin
+
+/usr/local/riscv/bin/riscv64-unknown-elf-objdump -t -d -r test

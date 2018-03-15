@@ -13,22 +13,25 @@ set(BUILD_TARGET "INSTRUCTION_ACCURATE" CACHE STRING "Default build is IA")
 set_property(CACHE BUILD_TARGET PROPERTY STRINGS CYCLE_ACCURATE INSTRUCTION_ACCURATE)
 
 set(CMAKE_C_FLAGS "--std=c99 -g -O1 ${CMAKE_C_FLAGS}")
-set(CMAKE_CXX_FLAGS "--std=c++11 ${CMAKE_CXX_FLAGS}")
+set(CMAKE_CXX_FLAGS "--std=c++14 ${CMAKE_CXX_FLAGS}")
 
 list(APPEND LINK_FLAGS "")
 
 list(APPEND SRC_FILES
   ${SOURCE_DIR}/alu.cpp
+  ${SOURCE_DIR}/commands.cpp
+  ${SOURCE_DIR}/command_interpreter.cpp
   ${SOURCE_DIR}/cpu.cpp
   ${SOURCE_DIR}/instruction_factory.cpp
   ${SOURCE_DIR}/memory.cpp
   ${SOURCE_DIR}/pipeline.cpp
-  ${SOURCE_DIR}/register_file.cpp
-)
+  ${SOURCE_DIR}/register_file.cpp)
 
 list(APPEND HEADER_FILES
   ${INCLUDE_DIR}/alu.hpp
   ${INCLUDE_DIR}/b_type_instructions.hpp
+  ${INCLUDE_DIR}/commands.hpp
+  ${INCLUDE_DIR}/command_interpreter.hpp
   ${INCLUDE_DIR}/cpu.hpp
   ${INCLUDE_DIR}/instructions.hpp
   ${INCLUDE_DIR}/instruction_factory.hpp
@@ -40,8 +43,7 @@ list(APPEND HEADER_FILES
   ${INCLUDE_DIR}/riscv_defs.hpp
   ${INCLUDE_DIR}/r_type_instructions.hpp
   ${INCLUDE_DIR}/s_type_instructions.hpp
-  ${INCLUDE_DIR}/u_type_instructions.hpp
-)
+  ${INCLUDE_DIR}/u_type_instructions.hpp)
 
 include_directories(${INCLUDE_DIR}
   ${glog_INCLUDE_DIR}
