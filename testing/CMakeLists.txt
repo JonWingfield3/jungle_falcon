@@ -9,8 +9,9 @@ set(GTEST_INCLUDE_DIRS "/usr/local/googletest/googletest/include")
 
 set(RISCV_SIM_DIR ../sim)
 set(RISCV_ASM_DIR ../asm)
+set(RISCV_C_DIR ../c)
 
-set(CMAKE_CXX_FLAGS "--std=c++11 ${CMAKE_CXX_FLAGS}")
+set(CMAKE_CXX_FLAGS "--std=c++14 ${CMAKE_CXX_FLAGS}")
 set(TESTING_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include)
 set(TESTING_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
@@ -49,9 +50,11 @@ add_executable(riscv_tests
   ${TESTING_SOURCE_DIR}/riscv_tests.cpp
   ${TESTING_HEADERS}
   ${TESTING_SOURCES})
+
 target_link_libraries(riscv_tests 
   ${GTEST_LIBRARIES}
   ${GTEST_MAIN_LIBRARIES}
   glog::glog
   gflags
   pthread)
+

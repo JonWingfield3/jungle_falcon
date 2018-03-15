@@ -3,5 +3,5 @@ project("c")
 
 add_custom_target(c ALL 
   COMMAND make all
-  COMMAND cp build/* ../build/c/
+  COMMAND cp build/*.bin ../build/c/
   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})

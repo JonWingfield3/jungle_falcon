@@ -3,5 +3,5 @@ project("asm")
 
 add_custom_target(asm ALL 
   COMMAND make all
-  COMMAND cp build/* ../build/asm/
+  COMMAND cp build/*.bin ../build/asm/
   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})

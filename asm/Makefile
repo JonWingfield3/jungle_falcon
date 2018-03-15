@@ -24,22 +24,20 @@ ALL = $(OBJ_FILES) $(OUT_FILES) $(MAP_FILES)\
 
 .PHONY : all
 all : $(ALL_FILENAMES)
-	mv $(ALL_FILENAMES) $(BUILD_DIR)/
  
 .PHONY : clean
 clean :
 	rm -f ./$(BUILD_DIR)/*
-	rm -f ./*.o
 
 %.o: %.s
-	$(AS) $(AS_FLAGS) $< -o $@
+	$(AS) $(AS_FLAGS) $< -o $(BUILD_DIR)/$@
 
 %.out : %.o
-	$(LD) $(LD_FLAGS) -Map=$(BUILD_DIR)/$(basename $(@F)).map $< -o $@
+	$(LD) $(LD_FLAGS) $(BUILD_DIR)/$< -o $(BUILD_DIR)/$@
 
 %.bin : %.out
-	$(OBJCOPY) -O binary $< $@
+	$(OBJCOPY) -O binary $(BUILD_DIR)/$< $(BUILD_DIR)/$@
 
 %.hex : %.bin
-	xxd -e $< > $@
+	xxd -e $(BUILD_DIR)/$< > $(BUILD_DIR)/$@
 
