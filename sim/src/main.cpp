@@ -16,11 +16,8 @@ int main(int argc, char* argv[]) {
   google::ParseCommandLineFlags(&argc, &argv, true);
   google::InitGoogleLogging(argv[0]);
 
-  const std::string image_name = FLAGS_riscv_binary;
-  VLOG(1) << "Executing program: " << image_name << std::endl;
-
-  MemoryPtr mem =
-      std::make_shared<MainMemory>(MainMemory(image_name, FLAGS_stack_size));
+  MemoryPtr mem = std::make_shared<MainMemory>(
+      MainMemory(FLAGS_riscv_binary, FLAGS_stack_size));
   CpuPtr cpu = std::make_shared<CPU>(CPU(mem));
   CommandInterpreter interpreter(cpu, mem);
 

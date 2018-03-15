@@ -10,7 +10,9 @@ set(INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include)
 set(SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 set(BUILD_TARGET "INSTRUCTION_ACCURATE" CACHE STRING "Default build is IA")
+set(CACHE_OPTION "ENABLE_CACHE" CACHE STRING "Default is no cache memory")
 set_property(CACHE BUILD_TARGET PROPERTY STRINGS CYCLE_ACCURATE INSTRUCTION_ACCURATE)
+set_property(CACHE CACHE_OPTION PROPERTY STRINGS ENABLE_CACHE DISABLE_CACHE)
 
 set(CMAKE_C_FLAGS "--std=c99 -g -O1 ${CMAKE_C_FLAGS}")
 set(CMAKE_CXX_FLAGS "--std=c++14 ${CMAKE_CXX_FLAGS}")
@@ -49,20 +51,23 @@ include_directories(${INCLUDE_DIR}
   ${glog_INCLUDE_DIR}
   ${flags_INCLUDE_DIR})
 
-if(BUILD_TARGET STREQUAL "CYCLE_ACCURATE")
-  add_executable(riscv_sim
-    ${SOURCE_DIR}/main.cpp
-    ${SRC_FILES}
-    ${HEADER_FILES})
+add_executable(riscv_sim
+  ${SOURCE_DIR}/main.cpp
+  ${SRC_FILES}
+  ${HEADER_FILES})
+  
+if (BUILD_TARGET STREQUAL "CYCLE_ACCURATE")
   target_compile_definitions(riscv_sim PUBLIC -D__CYCLE_ACCURATE__=1)
-  target_link_libraries(riscv_sim
-    glog::glog
-    gflags)
-elseif(BUILD_TARGET STREQUAL "INSTRUCTION_ACCURATE")
-  add_executable(riscv_sim
-    ${SOURCE_DIR}/main.cpp
-    ${SRC_FILES}
-    ${HEADER_FILES})
+  target_compile_definitions(riscv_sim PUBLIC -D__INSTRUCTION_ACCURATE__=0)
+elseif (BUILD_TARGET STREQUAL "INSTRUCTION_ACCURATE")
+  target_compile_definitions(riscv_sim PUBLIC -D__CYCLE_ACCURATE__=0)
   target_compile_definitions(riscv_sim PUBLIC -D__INSTRUCTION_ACCURATE__=1)
-  target_link_libraries(riscv_sim glog::glog gflags)
 endif()
+
+if (CACHE_OPTION STREQUAL "ENABLE_CACHE")
+  target_compile_definitions(riscv_sim PUBLIC -D__CACHE__=1)
+elseif (CACHE_OPTION STREQUAL "DISABLE_CACHE")
+  target_compile_definitions(riscv_sim PUBLIC -D__CACHE__=0)
+endif()
+
+target_link_libraries(riscv_sim glog::glog gflags)

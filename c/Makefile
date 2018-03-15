@@ -8,7 +8,7 @@ OBJDUMP = /usr/local/riscv/bin/riscv64-unknown-elf-objdump
 CC_FLAGS = -nostdlib --save-temps -mabi=ilp32 -march=rv32i
 
 #LD_FLAGS = -Wl,-Ttext-segment,0, Wl,-e_start -T riscv.ld
-LD_FLAGS = -T riscv.ld 
+LD_FLAGS = -T riscv.lds
 
 C_FILES = $(shell ls *.c)
 
@@ -34,29 +34,24 @@ ALL = $(OBJ_FILES) $(OUT_FILES) $(MAP_FILES)\
 
 .PHONY : all
 all : $(ALL_FILENAMES)
-	mv $(ALL_FILENAMES) $(BUILD_DIR)/
-	mv *.i *.s  $(BUILD_DIR)/
-#	mv $(BUILD_DIR)/start.S .
+	rm -f *.o *.i *.out
 
 .PHONY : clean
 clean :
 	rm -f ./$(BUILD_DIR)/*
 
 %.out: %.c
-	$(CC) -o $@ $< start.S $(LD_FLAGS) $(CC_FLAGS) 
-
-#%.out: %.o start.o
-#	$(LD) -o $@ $(LD_FLAGS) $^
+	$(CC) -o $(BUILD_DIR)/$@ $< start.s $(LD_FLAGS) $(CC_FLAGS) 
 
 %.bin : %.out
-	python3 linker.py $<
+	python3 linker.py $(BUILD_DIR)/$<
 
 %.hex : %.bin
-	xxd -e $< > $@
+	xxd -e $(BUILD_DIR)/$< > $(BUILD_DIR)/$@
 
 %.objdump : %.out
-	$(OBJDUMP) $< -t -d -r > $@
+	$(OBJDUMP) $(BUILD_DIR)/$< -t -d -r > $(BUILD_DIR)/$@
 
 %.disasm : %.out
-	$(OBJDUMP) $< -D > $@
+	$(OBJDUMP) $(BUILD_DIR)/$< -D > $(BUILD_DIR)/$@
 
