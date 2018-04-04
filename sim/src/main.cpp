@@ -18,6 +18,7 @@ int main(int argc, char* argv[]) {
 
   MemoryPtr mem = std::make_shared<MainMemory>(
       MainMemory(FLAGS_riscv_binary, FLAGS_stack_size));
+
   CpuPtr cpu = std::make_shared<CPU>(CPU(mem));
   CommandInterpreter interpreter(cpu, mem);
 

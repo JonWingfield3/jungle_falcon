@@ -1,0 +1,58 @@
+#include <j_type_instructions.hpp>
+
+////////////////////////////////////////////////////////////////////////////////
+JalInstruction::JalInstruction(instr_t instr, RegFilePtr reg_file, PcPtr pc)
+    : InstructionInterface(instr), reg_file_(reg_file), pc_(pc) {
+  name_ = "jal";
+  instruction_type_ = InstructionTypes::Jtype;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void JalInstruction::Decode() {
+  JTypeInstructionFormat j_type_format;
+  j_type_format.word = instr_;
+
+  const int rd_num = j_type_format.rd;
+  Rd_ = std::make_shared<Register>(Register(rd_num));
+  reg_file_->Read(*Rd_);
+
+  imm_t imm_upper_11 = (j_type_format.imm20 ? -1 : 0);
+  imm_upper_11 &= ~(0xfffff);
+  imm_ = static_cast<imm_t>(imm_upper_11 | (j_type_format.imm20 << 20) |
+                            (j_type_format.imm19_12 << 12) |
+                            (j_type_format.imm11 << 11) |
+                            (j_type_format.imm10_1 << 1));
+
+  InstructionInterface::Decode();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void JalInstruction::Execute() {
+  Rd_->Data() = pc_->Reg() + sizeof(instr_t);
+  InstructionInterface::Execute();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void JalInstruction::WriteBack() {
+  const reg_data_t old_pc = pc_->Reg();
+  pc_->Branch(imm_);
+  reg_file_->Write(*Rd_);
+  VLOG(3) << "WriteBack: Changing pc from " << old_pc << " to " << pc_->Reg();
+  VLOG(3) << "WriteBack: Writing " << *Rd_ << " back to RegFile";
+  InstructionInterface::WriteBack();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void JalInstruction::SetInstructionName() {
+  std::stringstream instruction_stream;
+  instruction_stream << name_ << " x" << static_cast<int>(Rd_->Number()) << ", "
+                     << imm_;
+  instruction_ = instruction_stream.str();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+std::string JalInstruction::RegistersString() {
+  std::stringstream reg_str;
+  reg_str << "rd: " << Rd();
+  return reg_str.str();
+}

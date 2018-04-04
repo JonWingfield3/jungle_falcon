@@ -10,11 +10,11 @@
 #include <s_type_instructions.hpp>
 #include <u_type_instructions.hpp>
 
-InstructionFactory::InstructionPtr InstructionFactory::Create(instr_t instr) {
+InstructionPtr InstructionFactory::Create(instr_t instr) {
   InstructionInterface::GenericInstructionFormat generic_instr_format;
   generic_instr_format.word = instr;
 
-  OpCode op = static_cast<OpCode>(generic_instr_format.opcode);
+  const OpCode op = static_cast<OpCode>(generic_instr_format.opcode);
   VLOG(4) << "Creating InstructionPtr, instruction opcode = " << std::showbase
           << std::hex << generic_instr_format.opcode;
   switch (op) {
@@ -173,6 +173,7 @@ InstructionFactory::InstructionPtr InstructionFactory::Create(instr_t instr) {
     default:
       VLOG(1) << "Unrecognized instruction: " << std::hex << std::showbase
               << instr << " could not create command object";
-      return nullptr;
+      return std::make_shared<NopInstruction>(NopInstruction());
   }
+  return nullptr;
 }

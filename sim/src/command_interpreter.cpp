@@ -6,34 +6,27 @@
 
 void CommandInterpreter::MainLoop() {
   std::cout << "Beginning RISCV simulator (a.k.a. jungle_falcon)" << std::endl;
-  int return_val = 0;
   do {
-    return_val = 0;
     std::cout << menu_string_;
     std::string input_str = "";
     std::cout << "\n>>> ";
     std::cin >> input_str;
 
-    for (auto enqueued_command : command_queue_) {
-      enqueued_command->RunCommand();
-    }
-
     CommandPtr command = command_factory_.Create(input_str);
     if (command != nullptr) {
-      return_val = command->RunCommand();
+      command->RunCommand();
     } else {
+      if (input_str == std::string("q")) {
+        break;
+      }
       VLOG(2) << "Unrecognized command: " << input_str;
-    }
-
-    if (return_val == Enqueue) {
-      command_queue_.push_back(command);
     }
 
     std::cin.clear();
     std::cin.ignore(INT_MAX, '\n');
 
     std::cout << std::endl;
-  } while (return_val != Exit);
+  } while (true);
 }
 
 CommandPtr CommandInterpreter::CommandFactory::Create(
@@ -45,6 +38,7 @@ CommandPtr CommandInterpreter::CommandFactory::Create(
   VLOG(5) << "Command Op String: " << command_op_string;
 
   std::map<std::string, Commands> COMMANDS{
+      {std::string("h"), Command_Help},
       {std::string("dr"), Command_DumpRegisters},
       {std::string("dm"), Command_DumpMemory},
       {std::string("c"), Command_Continue},
@@ -79,7 +73,7 @@ CommandPtr CommandInterpreter::CommandFactory::Create(
     case Command_Reset:
       return std::make_shared<ResetCommand>(ResetCommand(command_string, cpu_));
     case Command_Quit:
-      return std::make_shared<QuitCommand>(QuitCommand(command_string));
+      return nullptr;
     case Command_SetBreakpoint:
       return std::make_shared<SetBreakpointCommand>(
           SetBreakpointCommand(command_string, cpu_));
@@ -90,4 +84,5 @@ CommandPtr CommandInterpreter::CommandFactory::Create(
       return std::make_shared<ShowBreakpointsCommand>(
           ShowBreakpointsCommand(command_string, cpu_));
   }
+  return std::make_shared<NoActionCommand>(NoActionCommand(command_string));
 }
