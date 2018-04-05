@@ -10,6 +10,12 @@
 #include <s_type_instructions.hpp>
 #include <u_type_instructions.hpp>
 
+////////////////////////////////////////////////////////////////////////////////
+InstructionFactory::InstructionFactory(RegFilePtr reg_file, PcPtr pc,
+                                       MemoryPtr mem)
+    : reg_file_(reg_file), pc_(pc), mem_(mem) {}
+
+////////////////////////////////////////////////////////////////////////////////
 InstructionPtr InstructionFactory::Create(instr_t instr) {
   InstructionInterface::GenericInstructionFormat generic_instr_format;
   generic_instr_format.word = instr;

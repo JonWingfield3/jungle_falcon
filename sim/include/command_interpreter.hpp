@@ -26,6 +26,7 @@ class CommandInterpreter {
     CommandFactory(CpuPtr cpu, MemoryPtr mem) : cpu_(cpu), mem_(mem) {}
 
     enum Commands {
+      Command_Help,
       Command_DumpRegisters,
       Command_DumpMemory,
       Command_DumpCache,
@@ -45,13 +46,10 @@ class CommandInterpreter {
     MemoryPtr mem_;
   };
 
-  CommandFactory command_factory_;
-  using CommandQueue = std::list<CommandPtr>;
-  CommandQueue command_queue_;
-
   std::istream& cmd_stream_;
   CpuPtr cpu_;
   MemoryPtr mem_;
+  CommandFactory command_factory_;
 
   const std::string menu_string_{
       "\n\tdr [registers] : dump register contents\n"

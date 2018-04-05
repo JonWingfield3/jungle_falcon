@@ -21,7 +21,15 @@ enum class OpCode {
   RTypeArithmeticAndLogical = 0b0110011,
 };
 
-enum class InstrTypes { UType, Jtype, IType, BType, RType, SType };
+enum class InstructionTypes {
+  NoType,
+  UType,
+  Jtype,
+  IType,
+  BType,
+  RType,
+  SType
+};
 
 enum class Funct3 {
   BEQ = 0b000,
@@ -71,9 +79,14 @@ enum class Funct7 {
   SRA = 0b0100000
 };
 
+class InstructionInterface;
+using InstructionPtr = std::shared_ptr<InstructionInterface>;
+
 class InstructionInterface {
  public:
-  explicit InstructionInterface(instr_t instr) : instr_(instr) {}
+  explicit InstructionInterface(instr_t instr)
+      : instr_(instr), instruction_type_(InstructionTypes::NoType) {}
+
   virtual ~InstructionInterface() {}
 
   union PACKED GenericInstructionFormat {
@@ -87,32 +100,47 @@ class InstructionInterface {
   static_assert(sizeof(GenericInstructionFormat) == 4,
                 "Generic Instruction size != 4");
 
-  virtual void ExecuteCycle() {
-    Decode();
-    Execute();
-    MemoryAccess();
-    WriteBack();
-  }
+  virtual void ExecuteCycle();
 
-  virtual void Decode() {
-    SetInstructionName();
-    VLOG(1) << instruction_;
-    VLOG(3) << "Decode: Resolved instruction as " << instruction_;
-  }
+  virtual void Decode();
+  virtual void Execute();
+  virtual void MemoryAccess();
+  virtual void WriteBack();
 
-  virtual void Execute() { VLOG(3) << "Execute stage doing nothing"; }
-  virtual void MemoryAccess() { VLOG(3) << "MemoryAccess stage doing nothing"; }
-  virtual void WriteBack() { VLOG(3) << "WriteBack stage doing nothing"; }
+  InstructionTypes InstructionType() const;
+  const std::string& InstructionName() const;
+  const std::string& PreDecodedInstructionName() const { return name_; }
 
-  RegisterFile::RegisterMask Dependencies() const { return dependencies_; }
-
-  const std::string& Instruction() const { return instruction_; }
+  bool IsBType() const;
+  bool IsIType() const;
+  bool IsJType() const;
+  bool IsSType() const;
+  bool IsRType() const;
+  bool IsUType() const;
 
  protected:
   virtual void SetInstructionName() = 0;
+  virtual std::string RegistersString() = 0;
 
   std::string name_;
   std::string instruction_;
   instr_t instr_;
-  RegisterFile::RegisterMask dependencies_;
+  InstructionTypes instruction_type_;
+};
+
+class NopInstruction : public InstructionInterface {
+ public:
+  explicit NopInstruction() : InstructionInterface(0) { name_ = "nop"; }
+  ~NopInstruction() override = default;
+
+  // each of below function performs:
+  //   VLOG(2) << "<stage name>: NOP"
+  virtual void Decode();
+  virtual void Execute();
+  virtual void MemoryAccess();
+  virtual void WriteBack();
+
+ private:
+  void SetInstructionName() final { instruction_ = "nop"; }
+  std::string RegistersString() final { return ""; }
 };

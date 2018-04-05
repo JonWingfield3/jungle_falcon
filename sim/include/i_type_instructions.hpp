@@ -8,11 +8,7 @@
 
 class ITypeInstructionInterface : public InstructionInterface {
  public:
-  explicit ITypeInstructionInterface(instr_t instr, RegFilePtr reg_file)
-      : InstructionInterface(instr), reg_file_(reg_file) {
-    name_ = "I Type Instruction";
-  }
-
+  explicit ITypeInstructionInterface(instr_t instr, RegFilePtr reg_file);
   ~ITypeInstructionInterface() override = default;
 
   union PACKED ITypeInstructionFormat {
@@ -28,144 +24,67 @@ class ITypeInstructionInterface : public InstructionInterface {
   static_assert(sizeof(ITypeInstructionFormat) == 4,
                 "I Type Instruction size != 4");
 
-  void Decode() final {
-    ITypeInstructionFormat i_type_format;
-    i_type_format.word = instr_;
+  void Decode() final;
+  void Execute();
+  void WriteBack();
 
-    Rd_.first = static_cast<RegisterFile::Register>(i_type_format.rd);
-    reg_file_->Read(Rd_);
-
-    Rs1_.first = static_cast<RegisterFile::Register>(i_type_format.rs1);
-    reg_file_->Read(Rs1_);
-
-    imm_t imm_upper_20 = ((i_type_format.imm11_0 & (1 << 11)) ? -1 : 0);
-    imm_upper_20 &= ~(0xfff);
-    imm_ = static_cast<imm_t>(imm_upper_20 | i_type_format.imm11_0);
-
-    dependencies_.set(i_type_format.rd);
-    dependencies_.set(i_type_format.rs1);
-
-    InstructionInterface::Decode();
-  }
-
-  void Execute() {
-    VLOG(3) << "Executed: " << Rd_ << " = " << name_ << "{" << Rs1_ << ", "
-            << imm_ << "}";
-  }
-
-  void WriteBack() {
-    VLOG(3) << name_ << " WriteBack stage: writing " << Rd_
-            << " back to regfile";
-    reg_file_->Write(Rd_);
-  }
+  Register& Rd() { return *Rd_; }
+  Register& Rs1() { return *Rs1_; }
+  const Register& Rd() const { return *Rd_; }
+  const Register& Rs1() const { return *Rs1_; }
 
  protected:
-  void SetInstructionName() {
-    std::stringstream instruction_stream;
-    instruction_stream << name_ << " x" << static_cast<int>(Rd_.first) << ", x"
-                       << static_cast<int>(Rs1_.first) << ", " << imm_;
-    instruction_ = instruction_stream.str();
-  }
+  void SetInstructionName();
+  std::string RegistersString() final;
 
   RegFilePtr reg_file_;
-  RegisterFile::RegDataPair Rd_;
-  RegisterFile::RegDataPair Rs1_;
+  RegPtr Rd_;
+  RegPtr Rs1_;
   imm_t imm_;
 };
 
 class AddiInstruction : public ITypeInstructionInterface {
  public:
-  AddiInstruction(instr_t instr, RegFilePtr reg_file)
-      : ITypeInstructionInterface(instr, reg_file) {
-    name_ = "addi";
-  }
-
-  void Execute() final {
-    Rd_.second = Rs1_.second + imm_;
-    ITypeInstructionInterface::Execute();
-  }
+  AddiInstruction(instr_t instr, RegFilePtr reg_file);
+  void Execute() final;
 };
 
 class SltiInstruction : public ITypeInstructionInterface {
  public:
-  SltiInstruction(instr_t instr, RegFilePtr reg_file)
-      : ITypeInstructionInterface(instr, reg_file) {
-    name_ = "slti";
-  }
-
-  void Execute() final {
-    Rd_.second = static_cast<signed_reg_data_t>(Rs1_.second) < imm_;
-    ITypeInstructionInterface::Execute();
-  }
+  SltiInstruction(instr_t instr, RegFilePtr reg_file);
+  void Execute() final;
 };
 
 class SltiuInstruction : public ITypeInstructionInterface {
  public:
-  SltiuInstruction(instr_t instr, RegFilePtr reg_file)
-      : ITypeInstructionInterface(instr, reg_file) {
-    name_ = "sltiu";
-  }
-
-  void Execute() final {
-    Rd_.second = Rs1_.second < imm_;
-    ITypeInstructionInterface::Execute();
-  }
+  SltiuInstruction(instr_t instr, RegFilePtr reg_file);
+  void Execute() final;
 };
 
 class XoriInstruction : public ITypeInstructionInterface {
  public:
-  XoriInstruction(instr_t instr, RegFilePtr reg_file)
-      : ITypeInstructionInterface(instr, reg_file) {
-    name_ = "xori";
-  }
-
-  void Execute() final {
-    Rd_.second = Rs1_.second ^ imm_;
-    ITypeInstructionInterface::Execute();
-  }
+  XoriInstruction(instr_t instr, RegFilePtr reg_file);
+  void Execute() final;
 };
 
 class OriInstruction : public ITypeInstructionInterface {
  public:
-  OriInstruction(instr_t instr, RegFilePtr reg_file)
-      : ITypeInstructionInterface(instr, reg_file) {
-    name_ = "ori";
-  }
-
-  void Execute() final {
-    Rd_.second = Rs1_.second | imm_;
-    ITypeInstructionInterface::Execute();
-  }
+  OriInstruction(instr_t instr, RegFilePtr reg_file);
+  void Execute() final;
 };
 
 class AndiInstruction : public ITypeInstructionInterface {
  public:
-  AndiInstruction(instr_t instr, RegFilePtr reg_file)
-      : ITypeInstructionInterface(instr, reg_file) {
-    name_ = "andi";
-  }
-
-  void Execute() final {
-    Rd_.second = Rs1_.second & imm_;
-    ITypeInstructionInterface::Execute();
-  }
+  AndiInstruction(instr_t instr, RegFilePtr reg_file);
+  void Execute() final;
 };
 
 class JalrInstruction : public ITypeInstructionInterface {
  public:
-  JalrInstruction(instr_t instr, RegFilePtr reg_file, PcPtr pc)
-      : ITypeInstructionInterface(instr, reg_file), pc_(pc) {}
+  JalrInstruction(instr_t instr, RegFilePtr reg_file, PcPtr pc);
 
-  void Execute() final {
-    target_addr_ = Rs1_.second + imm_;
-    target_addr_ &= ~static_cast<mem_addr_t>(1);
-    VLOG(3) << "Execute: Target address = " << target_addr_;
-  }
-
-  void WriteBack() final {
-    pc_->Jump(target_addr_);
-    VLOG(3) << "WriteBack: Jumping to " << target_addr_;
-  }
+  void Execute() final;
+  void WriteBack() final;
 
  private:
   PcPtr pc_;
@@ -174,33 +93,14 @@ class JalrInstruction : public ITypeInstructionInterface {
 
 class LoadInstructionInterface : public ITypeInstructionInterface {
  public:
-  LoadInstructionInterface(instr_t instr, RegFilePtr reg_file, MemoryPtr mem)
-      : ITypeInstructionInterface(instr, reg_file), mem_(mem) {
-    name_ = "load";
-  }
+  LoadInstructionInterface(instr_t instr, RegFilePtr reg_file, MemoryPtr mem);
 
-  void Execute() final {
-    load_addr_ = Rs1_.second + imm_;
-    VLOG(3) << "Execute: calculated load address as " << load_addr_;
-  }
-
-  void MemoryAccess() {
-    VLOG(3) << "MemoryAccess: read " << load_data_ << " from " << load_addr_;
-  }
-
-  void WriteBack() final {
-    Rd_.second = load_data_;
-    reg_file_->Write(Rd_);
-    VLOG(3) << "WriteBack: writing " << load_data_ << " to " << Rd_;
-  }
+  void Execute() final;
+  void MemoryAccess();
+  void WriteBack() final;
 
  protected:
-  void SetInstructionName() final {
-    std::stringstream instruction_stream;
-    instruction_stream << name_ << " x" << static_cast<int>(Rd_.first) << ", "
-                       << imm_ << "(x" << static_cast<int>(Rs1_.first) << ")";
-    instruction_ = instruction_stream.str();
-  }
+  void SetInstructionName() final;
 
   MemoryPtr mem_;
   mem_addr_t load_addr_;
@@ -209,65 +109,30 @@ class LoadInstructionInterface : public ITypeInstructionInterface {
 
 class LbInstruction : public LoadInstructionInterface {
  public:
-  LbInstruction(instr_t instr, RegFilePtr reg_file, MemoryPtr mem)
-      : LoadInstructionInterface(instr, reg_file, mem) {
-    name_ = "lb";
-  }
-
-  void MemoryAccess() final {
-    load_data_ = static_cast<signed_reg_data_t>(mem_->ReadByte(load_addr_));
-    LoadInstructionInterface::MemoryAccess();
-  }
+  LbInstruction(instr_t instr, RegFilePtr reg_file, MemoryPtr mem);
+  void MemoryAccess() final;
 };
 
 class LbuInstruction : public LoadInstructionInterface {
  public:
-  LbuInstruction(instr_t instr, RegFilePtr reg_file, MemoryPtr mem)
-      : LoadInstructionInterface(instr, reg_file, mem) {
-    name_ = "lbu";
-  }
-
-  void MemoryAccess() final {
-    load_data_ = static_cast<reg_data_t>(mem_->ReadByte(load_addr_));
-    LoadInstructionInterface::MemoryAccess();
-  }
+  LbuInstruction(instr_t instr, RegFilePtr reg_file, MemoryPtr mem);
+  void MemoryAccess() final;
 };
 
 class LhInstruction : public LoadInstructionInterface {
  public:
-  LhInstruction(instr_t instr, RegFilePtr reg_file, MemoryPtr mem)
-      : LoadInstructionInterface(instr, reg_file, mem) {
-    name_ = "lh";
-  }
-
-  void MemoryAccess() final {
-    load_data_ = static_cast<signed_reg_data_t>(mem_->ReadHalfWord(load_addr_));
-    LoadInstructionInterface::MemoryAccess();
-  }
+  LhInstruction(instr_t instr, RegFilePtr reg_file, MemoryPtr mem);
+  void MemoryAccess() final;
 };
 
 class LhuInstruction : public LoadInstructionInterface {
  public:
-  LhuInstruction(instr_t instr, RegFilePtr reg_file, MemoryPtr mem)
-      : LoadInstructionInterface(instr, reg_file, mem) {
-    name_ = "lhu";
-  }
-
-  void MemoryAccess() final {
-    load_data_ = static_cast<reg_data_t>(mem_->ReadHalfWord(load_addr_));
-    LoadInstructionInterface::MemoryAccess();
-  }
+  LhuInstruction(instr_t instr, RegFilePtr reg_file, MemoryPtr mem);
+  void MemoryAccess() final;
 };
 
 class LwInstruction : public LoadInstructionInterface {
  public:
-  LwInstruction(instr_t instr, RegFilePtr reg_file, MemoryPtr mem)
-      : LoadInstructionInterface(instr, reg_file, mem) {
-    name_ = "lw";
-  }
-
-  void MemoryAccess() final {
-    load_data_ = static_cast<reg_data_t>(mem_->ReadWord(load_addr_));
-    LoadInstructionInterface::MemoryAccess();
-  }
+  LwInstruction(instr_t instr, RegFilePtr reg_file, MemoryPtr mem);
+  void MemoryAccess() final;
 };

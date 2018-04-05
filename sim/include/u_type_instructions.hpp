@@ -8,11 +8,7 @@
 
 class UTypeInstructionInterface : public InstructionInterface {
  public:
-  explicit UTypeInstructionInterface(instr_t instr, RegFilePtr reg_file)
-      : InstructionInterface(instr), reg_file_(reg_file) {
-    name_ = "U Type Instruction";
-  }
-
+  explicit UTypeInstructionInterface(instr_t instr, RegFilePtr reg_file);
   ~UTypeInstructionInterface() override = default;
 
   union PACKED UTypeInstructionFormat {
@@ -26,68 +22,32 @@ class UTypeInstructionInterface : public InstructionInterface {
   static_assert(sizeof(UTypeInstructionFormat) == 4,
                 "U Type Instruction size != 4");
 
-  void Decode() {
-    UTypeInstructionFormat u_type_format;
-    u_type_format.word = instr_;
+  void Decode();
+  void Execute();
+  void WriteBack() final;
 
-    Rd_.first = static_cast<RegisterFile::Register>(u_type_format.rd);
-    reg_file_->Read(Rd_);
-
-    imm_ = static_cast<imm_t>(u_type_format.imm31_12 << 12);
-
-    InstructionInterface::Decode();
-  }
+  Register& Rd() { return *Rd_; }
+  const Register& Rd() const { return *Rd_; }
 
  protected:
-  void SetInstructionName() {
-    std::stringstream instruction_stream;
-    instruction_stream << name_ << " x" << static_cast<int>(Rd_.first) << ", "
-                       << imm_;
-    instruction_ = instruction_stream.str();
-  }
+  void SetInstructionName();
+  std::string RegistersString() final;
 
   RegFilePtr reg_file_;
-  RegisterFile::RegDataPair Rd_;
+  RegPtr Rd_;
   imm_t imm_;
 };
 
 class LuiInstruction : public UTypeInstructionInterface {
  public:
-  LuiInstruction(instr_t instr, RegFilePtr reg_file)
-      : UTypeInstructionInterface(instr, reg_file) {
-    name_ = "lui";
-  }
-
-  void Execute() final { Rd_.second = imm_; }
-
-  void MemoryAccess() final {}
-
-  void WriteBack() final {
-    reg_file_->Write(Rd_);
-    VLOG(3) << "WriteBack: writing immediate to register file " << Rd_;
-  }
+  LuiInstruction(instr_t instr, RegFilePtr reg_file);
+  void Execute() final;
 };
 
 class AuipcInstruction : public UTypeInstructionInterface {
  public:
-  AuipcInstruction(instr_t instr, RegFilePtr reg_file, PcPtr pc)
-      : UTypeInstructionInterface(instr, reg_file), pc_(pc) {
-    name_ = "auipc";
-  }
-
-  void Execute() final {
-    reg_data_t pc_offset = static_cast<reg_data_t>(
-        static_cast<int>(pc_->Reg()) + static_cast<int>(imm_));
-    VLOG(3) << "Execute: computed pc offset address " << pc_offset;
-    Rd_.second = pc_offset;
-  }
-
-  void MemoryAccess() final {}
-
-  void WriteBack() final {
-    reg_file_->Write(Rd_);
-    VLOG(3) << "WriteBack: writing to register file " << Rd_;
-  }
+  AuipcInstruction(instr_t instr, RegFilePtr reg_file, PcPtr pc);
+  void Execute() final;
 
  private:
   PcPtr pc_;

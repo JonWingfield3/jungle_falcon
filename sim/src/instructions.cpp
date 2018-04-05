@@ -11,24 +11,24 @@ void InstructionInterface::ExecuteCycle() {
 ////////////////////////////////////////////////////////////////////////////////
 void InstructionInterface::Decode() {
   SetInstructionName();
-  VLOG(1) << "Decode: " << instruction_ << "\tRegisters: " << RegistersString();
+  VLOG(2) << "Decode: " << instruction_ << "\tRegisters: " << RegistersString();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 void InstructionInterface::Execute() {
-  VLOG(1) << "Execute: " << instruction_
+  VLOG(2) << "Execute: " << instruction_
           << "\tRegisters: " << RegistersString();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 void InstructionInterface::MemoryAccess() {
-  VLOG(1) << "Memory Access: " << instruction_
+  VLOG(2) << "Memory Access: " << instruction_
           << "\tRegisters: " << RegistersString();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 void InstructionInterface::WriteBack() {
-  VLOG(1) << "Write Back: " << instruction_
+  VLOG(2) << "Write Back: " << instruction_
           << "\tRegisters: " << RegistersString();
 }
 
@@ -71,3 +71,15 @@ bool InstructionInterface::IsRType() const {
 bool InstructionInterface::IsUType() const {
   return instruction_type_ == InstructionTypes::UType;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+void NopInstruction::Decode() { VLOG(2) << "Decode: NOP"; }
+
+////////////////////////////////////////////////////////////////////////////////
+void NopInstruction::Execute() { VLOG(2) << "Execute: NOP"; }
+
+////////////////////////////////////////////////////////////////////////////////
+void NopInstruction::MemoryAccess() { VLOG(2) << "Memory Access: NOP"; }
+
+////////////////////////////////////////////////////////////////////////////////
+void NopInstruction::WriteBack() { VLOG(2) << "Write Back: NOP"; }

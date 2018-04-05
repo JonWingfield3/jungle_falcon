@@ -1,10 +1,10 @@
 #pragma once
 
-#include <array>
 #include <bitset>
 #include <cstdint>
 #include <iostream>
 #include <memory>
+#include <vector>
 
 #include <memory.hpp>
 #include <riscv_defs.hpp>
@@ -15,11 +15,32 @@ using RegFilePtr = std::shared_ptr<RegisterFile>;
 class ProgramCounter;
 using PcPtr = std::shared_ptr<ProgramCounter>;
 
+class Register;
+using RegPtr = std::shared_ptr<Register>;
+
+class Register {
+ public:
+  Register();
+  Register(int reg_num, reg_data_t data = 0);
+
+  const reg_data_t& Data() const;
+  reg_data_t& Data();
+
+  int Number() const;
+  void Clear();
+
+  friend std::ostream& operator<<(std::ostream& stream, const Register& reg);
+
+ private:
+  reg_data_t data_;
+  int reg_num_;
+};
+
 class RegisterFile {
  public:
   RegisterFile();
 
-  enum class Register {
+  enum class Registers {
     X0,
     X1,
     LR = X1,
@@ -62,60 +83,35 @@ class RegisterFile {
   };
   static constexpr int NumCPURegisters = 32;
 
-  using RegDataPair = std::pair<RegisterFile::Register, reg_data_t>;
-  using RegisterMask = std::bitset<RegisterFile::NumCPURegisters>;
+  reg_data_t Read(Registers reg) const;
+  void Read(Register& reg) const;
 
-  reg_data_t Read(Register reg) const;
-  void Read(RegDataPair& reg_data_pair) const {
-    reg_data_pair.second = Read(reg_data_pair.first);
-  }
+  void Write(Registers reg, reg_data_t write_data);
+  void Write(const Register& reg);
 
-  void Write(Register reg, reg_data_t write_data);
-  void Write(RegDataPair reg_data_pair) {
-    Write(reg_data_pair.first, reg_data_pair.second);
-  }
+  void DumpRegisters() const;
 
-  void DumpRegisters(std::vector<Register> registers);
-
-  void Reset() { registers_.fill(0); }
-
-  friend std::ostream& operator<<(std::ostream& stream,
-                                  RegDataPair reg_data_pair) {
-    stream << "(x" << static_cast<int>(reg_data_pair.first) << ", "
-           << reg_data_pair.second << ")";
-  }
+  void Reset();
 
  private:
-  std::array<reg_data_t, NumCPURegisters> registers_;
+  std::vector<Register> registers_;
 };
 
 class ProgramCounter {
  public:
-  ProgramCounter(mem_addr_t entry_point = 0) : program_counter_(entry_point) {}
+  ProgramCounter(mem_addr_t entry_point = 0);
 
-  ProgramCounter& operator++() {
-    program_counter_ += sizeof(instr_t);
-    return *this;
-  }
+  ProgramCounter& operator++();
+  ProgramCounter& operator+=(mem_offset_t offset);
 
-  ProgramCounter& operator+=(mem_offset_t offset) {
-    program_counter_ += offset;
-  }
+  mem_addr_t Reg() const;
 
-  mem_addr_t Reg() const { return program_counter_; }
+  void Branch(int offset);
+  void Jump(mem_addr_t jump_addr);
+  void Reset();
 
-  void Branch(int offset) {
-    const int signed_pc = offset - 4 + static_cast<int>(program_counter_);
-    CHECK(signed_pc >= 0) << "PC went negative: " << signed_pc;
-    program_counter_ = static_cast<reg_data_t>(signed_pc);
-  }
-
-  void Jump(mem_addr_t jump_addr) {
-    program_counter_ = jump_addr - 4;
-    VLOG(4) << "Jumping to address " << jump_addr;
-  }
-
-  void Reset() { program_counter_ = 0; }
+  friend std::ostream& operator<<(std::ostream& stream,
+                                  const ProgramCounter& pc);
 
  private:
   mem_addr_t program_counter_ = 0;

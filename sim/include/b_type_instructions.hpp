@@ -6,16 +6,10 @@
 #include <register_file.hpp>
 #include <riscv_defs.hpp>
 
-// TODO: Add actual branching (which stage?)
-
 class BTypeInstructionInterface : public InstructionInterface {
  public:
   explicit BTypeInstructionInterface(instr_t instr, RegFilePtr reg_file,
-                                     PcPtr& pc)
-      : InstructionInterface(instr), reg_file_(reg_file), pc_(pc) {
-    name_ = "B Type Instruction";
-  }
-
+                                     PcPtr& pc);
   ~BTypeInstructionInterface() override = default;
 
   union PACKED BTypeInstructionFormat {
@@ -34,134 +28,62 @@ class BTypeInstructionInterface : public InstructionInterface {
   static_assert(sizeof(BTypeInstructionFormat) == 4,
                 "B Type Instruction size != 4");
 
-  void Decode() {
-    BTypeInstructionFormat b_type_format;
-    b_type_format.word = instr_;
+  void Decode();
+  void Execute();
+  void WriteBack() final;
 
-    Rs1_.first = static_cast<RegisterFile::Register>(b_type_format.rs1);
-    reg_file_->Read(Rs1_);
+  Register& Rs1() { return *Rs1_; }
+  Register& Rs2() { return *Rs2_; }
+  const Register& Rs1() const { return *Rs1_; }
+  const Register& Rs2() const { return *Rs2_; }
 
-    Rs2_.first = static_cast<RegisterFile::Register>(b_type_format.rs2);
-    reg_file_->Read(Rs2_);
-
-    imm_t imm_upper_20 = (b_type_format.imm12 ? -1 : 0);
-    imm_upper_20 &= ~(0x1fff);
-    imm_ = static_cast<int>(imm_upper_20 | (b_type_format.imm12 << 12) |
-                            (b_type_format.imm11 << 11) |
-                            (b_type_format.imm10_5 << 5) |
-                            (b_type_format.imm4_1 << 1));
-
-    dependencies_.set(b_type_format.rs1);
-    dependencies_.set(b_type_format.rs2);
-
-    InstructionInterface::Decode();
-  }
-
-  void Execute() {
-    VLOG(3) << "Execute: " << name_
-            << (branch_ ? " taking branch" : " not taking branch");
-  }
-
-  void WriteBack() final {
-    if (branch_) {
-      pc_->Branch(imm_);
-    }
-    VLOG(3) << "WriteBack: setting pc to " << pc_->Reg();
-  }
+  bool WillBranch() { return branch_; }
 
  protected:
-  void SetInstructionName() {
-    std::stringstream instruction_stream;
-    instruction_stream << name_ << " x" << static_cast<int>(Rs1_.first) << ", x"
-                       << static_cast<int>(Rs2_.first) << ", " << imm_;
-    instruction_ = instruction_stream.str();
-  }
+  void SetInstructionName();
+  std::string RegistersString() final;
 
   RegFilePtr reg_file_;
   PcPtr pc_;
   mem_addr_t target_addr_;
   bool branch_;
-  RegisterFile::RegDataPair Rs1_;
-  RegisterFile::RegDataPair Rs2_;
+  RegPtr Rs1_;
+  RegPtr Rs2_;
   int imm_;
 };
 
 class BeqInstruction : public BTypeInstructionInterface {
  public:
-  BeqInstruction(instr_t instr, RegFilePtr reg_file, PcPtr pc)
-      : BTypeInstructionInterface(instr, reg_file, pc) {
-    name_ = "beq";
-  }
-
-  void Execute() final {
-    branch_ = (Rs1_.second == Rs2_.second);
-    BTypeInstructionInterface::Execute();
-  }
+  BeqInstruction(instr_t instr, RegFilePtr reg_file, PcPtr pc);
+  void Execute() final;
 };
 
 class BneInstruction : public BTypeInstructionInterface {
  public:
-  BneInstruction(instr_t instr, RegFilePtr reg_file, PcPtr pc)
-      : BTypeInstructionInterface(instr, reg_file, pc) {
-    name_ = "bne";
-  }
-
-  void Execute() final {
-    branch_ = (Rs1_.second != Rs2_.second);
-    BTypeInstructionInterface::Execute();
-  }
+  BneInstruction(instr_t instr, RegFilePtr reg_file, PcPtr pc);
+  void Execute() final;
 };
 
 class BltInstruction : public BTypeInstructionInterface {
  public:
-  BltInstruction(instr_t instr, RegFilePtr reg_file, PcPtr pc)
-      : BTypeInstructionInterface(instr, reg_file, pc) {
-    name_ = "blt";
-  }
-
-  void Execute() final {
-    branch_ = (static_cast<signed_reg_data_t>(Rs1_.second) <
-               static_cast<signed_reg_data_t>(Rs2_.second));
-    BTypeInstructionInterface::Execute();
-  }
+  BltInstruction(instr_t instr, RegFilePtr reg_file, PcPtr pc);
+  void Execute() final;
 };
 
 class BgeInstruction : public BTypeInstructionInterface {
  public:
-  BgeInstruction(instr_t instr, RegFilePtr reg_file, PcPtr pc)
-      : BTypeInstructionInterface(instr, reg_file, pc) {
-    name_ = "bge";
-  }
-
-  void Execute() final {
-    branch_ = (static_cast<signed_reg_data_t>(Rs1_.second) >=
-               static_cast<signed_reg_data_t>(Rs2_.second));
-    BTypeInstructionInterface::Execute();
-  }
+  BgeInstruction(instr_t instr, RegFilePtr reg_file, PcPtr pc);
+  void Execute() final;
 };
 
 class BltuInstruction : public BTypeInstructionInterface {
  public:
-  BltuInstruction(instr_t instr, RegFilePtr reg_file, PcPtr pc)
-      : BTypeInstructionInterface(instr, reg_file, pc) {
-    name_ = "bltu";
-  }
-
-  void Execute() final {
-    branch_ = (Rs1_.second < Rs2_.second);
-    BTypeInstructionInterface::Execute();
-  }
+  BltuInstruction(instr_t instr, RegFilePtr reg_file, PcPtr pc);
+  void Execute() final;
 };
 
 class BgeuInstruction : public BTypeInstructionInterface {
  public:
-  BgeuInstruction(instr_t instr, RegFilePtr reg_file, PcPtr pc)
-      : BTypeInstructionInterface(instr, reg_file, pc) {
-    name_ = "bgeu";
-  }
-
-  void Execute() final {
-    branch_ = (Rs1_.second >= Rs2_.second);
-    BTypeInstructionInterface::Execute();
-  }
+  BgeuInstruction(instr_t instr, RegFilePtr reg_file, PcPtr pc);
+  void Execute() final;
 };

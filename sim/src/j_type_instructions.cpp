@@ -33,12 +33,15 @@ void JalInstruction::Execute() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void JalInstruction::WriteBack() {
+void JalInstruction::MemoryAccess() {
   const reg_data_t old_pc = pc_->Reg();
   pc_->Branch(imm_);
+  InstructionInterface::WriteBack();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void JalInstruction::WriteBack() {
   reg_file_->Write(*Rd_);
-  VLOG(3) << "WriteBack: Changing pc from " << old_pc << " to " << pc_->Reg();
-  VLOG(3) << "WriteBack: Writing " << *Rd_ << " back to RegFile";
   InstructionInterface::WriteBack();
 }
 

@@ -12,17 +12,39 @@
 #include <u_type_instructions.hpp>
 
 ////////////////////////////////////////////////////////////////////////////////
+Pipeline::Pipeline(RegFilePtr reg_file, PcPtr pc, MemoryPtr mem)
+    : mem_(mem), pc_(pc), instruction_factory_(reg_file, pc, mem) {
+  InstructionPtr nop_instr = std::make_shared<NopInstruction>(NopInstruction());
+  for (std::size_t ii = 0; ii < NumStages; ++ii) {
+    instruction_queue_.push_back(nop_instr);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void Pipeline::Flush(std::size_t n) {
+  CHECK(n <= NumStages) << "Can't flush this much!";
+  InstructionPtr nop_instr = std::make_shared<NopInstruction>(NopInstruction());
+  for (std::size_t ii = 0; ii <= n; ++ii) {
+    instruction_queue_.at(ii) = nop_instr;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+const InstructionPtr& Pipeline::Instruction(enum Stages pipeline_stage) const {
+  return instruction_queue_.at(pipeline_stage);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+InstructionPtr& Pipeline::Instruction(enum Stages pipeline_stage) {
+  return instruction_queue_.at(pipeline_stage);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 InstructionPtr Pipeline::Fetch() {
-  VLOG(1) << "Address: " << std::showbase << std::hex << pc_->Reg();
-  VLOG(2) << "Fetching instruction from " << std::showbase << std::hex
-          << pc_->Reg();
+  VLOG(1) << "Program Counter: " << std::showbase << std::hex << pc_->Reg();
   const instr_t instr = mem_->ReadWord(pc_->Reg());
   ++*pc_;
-
-  InstructionPtr instr_ptr = instruction_factory_.Create(instr);
-
-  CHECK(instr_ptr != nullptr) << "Unrecognized instruction!!!";
-  return instr_ptr;
+  return instruction_factory_.Create(instr);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -34,6 +56,7 @@ void Pipeline::ExecuteCycle() {
   instruction_queue_.push_front(fetched_instr);
 
   const auto& write_back_stage = Instruction(WriteBackStage);
+  VLOG(1) << write_back_stage->InstructionName();
   write_back_stage->WriteBack();
 
   const auto& memory_access_stage = Instruction(MemoryAccessStage);
@@ -45,6 +68,7 @@ void Pipeline::ExecuteCycle() {
   const auto decode_stage = Instruction(DecodeStage);
   decode_stage->Decode();
 
+  VLOG(1) << "Fetch: " << fetched_instr->PreDecodedInstructionName();
 #else
 #if (__INSTRUCTION_ACCURATE__ == 1)
   const InstructionPtr instr_ptr = Fetch();
@@ -205,4 +229,14 @@ void DataHazardDetectionUnit::Handle1bTypeHazard(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void ControlHazardDetectionUnit::HandleHazard() {}
+void ControlHazardDetectionUnit::HandleHazard() {
+  InstructionPtr exe_instr =
+      pipeline_->Instruction(Pipeline::Stages::ExecuteStage);
+
+  if (exe_instr->IsBType() &&
+      reinterpret_cast<BTypeInstructionInterface*>(exe_instr.get())
+          ->WillBranch()) {
+    VLOG(2) << "Detected a branch! Flushing pipeline";
+    pipeline_->Flush(Pipeline::Stages::DecodeStage);
+  }
+}

@@ -38,6 +38,7 @@ void BTypeInstructionInterface::Execute() { InstructionInterface::Execute(); }
 void BTypeInstructionInterface::WriteBack() {
   if (branch_) {
     pc_->Branch(imm_);
+    VLOG(2) << "Branched to address: " << pc_;
   }
   InstructionInterface::WriteBack();
 }
@@ -45,9 +46,8 @@ void BTypeInstructionInterface::WriteBack() {
 ////////////////////////////////////////////////////////////////////////////////
 void BTypeInstructionInterface::SetInstructionName() {
   std::stringstream instruction_stream;
-  instruction_stream << name_ << " x" << static_cast<int>(Rs1_->Number())
-                     << ", x" << static_cast<int>(Rs2_->Number()) << ", "
-                     << imm_;
+  instruction_stream << name_ << " x" << Rs1_->Number() << ", x"
+                     << Rs2_->Number() << ", " << imm_;
   instruction_ = instruction_stream.str();
 }
 
