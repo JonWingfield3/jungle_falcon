@@ -137,3 +137,18 @@ class ShowBreakpointsCommand : public CommandBase {
  private:
   CpuPtr cpu_;
 };
+
+class ShowStatsCommand : public CommandBase {
+ public:
+  ShowStatsCommand(const std::string& command, CpuPtr cpu,
+                   HazardDetectionPtr data_hazard_unit,
+                   HazardDetectionPtr control_hazard_unit);
+  ~ShowStatsCommand() override = default;
+
+  void RunCommand() final;
+
+ private:
+  CpuPtr cpu_;
+  HazardDetectionPtr data_hazard_unit_;
+  HazardDetectionPtr control_hazard_unit_;
+};

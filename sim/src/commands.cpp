@@ -116,13 +116,40 @@ ShowBreakpointsCommand::ShowBreakpointsCommand(const std::string& command,
 
 ////////////////////////////////////////////////////////////////////////////////
 void ShowBreakpointsCommand::RunCommand() {
-  const auto breakpoints = cpu_->GetBreakpoints();
+  const auto& breakpoints = cpu_->GetBreakpoints();
   if (breakpoints.empty()) {
     std::cout << "No breakpoints" << std::endl;
   } else {
-    for (const auto breakpoint : breakpoints) {
+    for (const auto& breakpoint : breakpoints) {
       std::cout << "Breakpoint " << breakpoint.first << " : " << std::hex
                 << std::showbase << breakpoint.second;
     }
   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+ShowStatsCommand::ShowStatsCommand(const std::string& command, CpuPtr cpu,
+                                   HazardDetectionPtr data_hazard_unit,
+                                   HazardDetectionPtr control_hazard_unit)
+    : CommandBase(
+          "stat", "Show CPU sim stats (cycles, instructions, CPI, etc.)",
+          "Displays useful metrics to evaluate sim's performance", command),
+      cpu_(cpu),
+      data_hazard_unit_(data_hazard_unit),
+      control_hazard_unit_(control_hazard_unit) {}
+
+////////////////////////////////////////////////////////////////////////////////
+void ShowStatsCommand::RunCommand() {
+  std::cout << "Cycles Executed: " << cpu_->GetCycles() << std::endl
+            << "Instructions Executed: "
+            << cpu_->PipeLine()->InstructionsCompleted() << std::endl
+            << "CPI: " << cpu_->GetCPI() << std::endl
+            << "Data Hazards: " << data_hazard_unit_->HazardsDetected()
+            << std::endl
+            << "Delay added from data hazards: "
+            << data_hazard_unit_->DelayAdded() << std::endl
+            << "Control Hazards: " << control_hazard_unit_->HazardsDetected()
+            << std::endl
+            << "Delay added from control hazards: "
+            << control_hazard_unit_->DelayAdded() << std::endl;
 }

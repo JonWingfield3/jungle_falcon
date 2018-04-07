@@ -41,13 +41,17 @@ class UTypeInstructionInterface : public InstructionInterface {
 class LuiInstruction : public UTypeInstructionInterface {
  public:
   LuiInstruction(instr_t instr, RegFilePtr reg_file);
+
   void Execute() final;
+  OpCode GetOpCode() const final { return OpCode::LUI; }
 };
 
 class AuipcInstruction : public UTypeInstructionInterface {
  public:
   AuipcInstruction(instr_t instr, RegFilePtr reg_file, PcPtr pc);
+
   void Execute() final;
+  OpCode GetOpCode() const final { return OpCode::AUIPC; }
 
  private:
   PcPtr pc_;

@@ -7,16 +7,13 @@
 
 #include <commands.hpp>
 #include <cpu.hpp>
+#include <hazard_detection.hpp>
 #include <memory.hpp>
 
 class CommandInterpreter {
  public:
   CommandInterpreter(CpuPtr cpu, MemoryPtr mem,
-                     std::istream& cmd_stream = std::cin)
-      : cmd_stream_(cmd_stream),
-        cpu_(cpu),
-        mem_(mem),
-        command_factory_(cpu, mem) {}
+                     std::istream& cmd_stream = std::cin);
 
   void MainLoop();
 
@@ -37,6 +34,7 @@ class CommandInterpreter {
       Command_SetBreakpoint,
       Command_DeleteBreakpoint,
       Command_ShowBreakpoints,
+      Command_Stats,
     };
 
     CommandPtr Create(std::string command_string);
@@ -50,6 +48,8 @@ class CommandInterpreter {
   CpuPtr cpu_;
   MemoryPtr mem_;
   CommandFactory command_factory_;
+  HazardDetectionPtr data_hazard_unit_;
+  HazardDetectionPtr control_hazard_unit_;
 
   const std::string menu_string_{
       "\n\tdr [registers] : dump register contents\n"
@@ -61,5 +61,6 @@ class CommandInterpreter {
       "\tq: quit\n"
       "\tbr [address] : set breakpoint\n"
       "\tdel [breakpoint number] : delete breakpoint\n"
-      "\tsbr : show all breakpoints\n\n"};
+      "\tsbr : show all breakpoints\n"
+      "\tstat: show sim stats\n\n"};
 };

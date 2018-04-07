@@ -1,8 +1,10 @@
 #pragma once
 
+#include <functional>
 #include <memory>
 
 #include <instructions.hpp>
+#include <memory.hpp>
 #include <register_file.hpp>
 #include <riscv_defs.hpp>
 
@@ -32,6 +34,8 @@ class ITypeInstructionInterface : public InstructionInterface {
   Register& Rs1() { return *Rs1_; }
   const Register& Rd() const { return *Rd_; }
   const Register& Rs1() const { return *Rs1_; }
+
+  OpCode GetOpCode() const { return OpCode::ITypeArithmeticAndLogical; }
 
  protected:
   void SetInstructionName();
@@ -84,11 +88,14 @@ class JalrInstruction : public ITypeInstructionInterface {
   JalrInstruction(instr_t instr, RegFilePtr reg_file, PcPtr pc);
 
   void Execute() final;
+  void MemoryAccess() final;
   void WriteBack() final;
+
+  OpCode GetOpCode() const final { return OpCode::JALR; }
 
  private:
   PcPtr pc_;
-  mem_addr_t target_addr_;
+  int target_addr_;
 };
 
 class LoadInstructionInterface : public ITypeInstructionInterface {
@@ -99,12 +106,13 @@ class LoadInstructionInterface : public ITypeInstructionInterface {
   void MemoryAccess();
   void WriteBack() final;
 
+  OpCode GetOpCode() const final { return OpCode::Lx; }
+
  protected:
   void SetInstructionName() final;
 
   MemoryPtr mem_;
   mem_addr_t load_addr_;
-  reg_data_t load_data_;
 };
 
 class LbInstruction : public LoadInstructionInterface {

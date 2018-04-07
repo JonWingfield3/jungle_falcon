@@ -38,6 +38,8 @@ class RTypeInstructionInterface : public InstructionInterface {
   const Register& Rs1() const { return *Rs1_; }
   const Register& Rs2() const { return *Rs2_; }
 
+  OpCode GetOpCode() const final { return OpCode::RTypeArithmeticAndLogical; }
+
  protected:
   void SetInstructionName();
   std::string RegistersString() final;

@@ -4,12 +4,16 @@
 #include <cstdint>
 #include <memory>
 
+#include <glog/logging.h>
+
+//#include <pipeline.hpp>
 #include <register_file.hpp>
 #include <riscv_defs.hpp>
 
 #define PACKED __attribute__((__packed__))
 
 enum class OpCode {
+  NoOp = 0b0,
   LUI = 0b0110111,
   AUIPC = 0b0010111,
   JAL = 0b1101111,
@@ -18,7 +22,7 @@ enum class OpCode {
   Lx = 0b0000011,   // Load instructions Op
   Sx = 0b0100011,   // Store instructions Op
   ITypeArithmeticAndLogical = 0b0010011,
-  RTypeArithmeticAndLogical = 0b0110011,
+  RTypeArithmeticAndLogical = 0b0110011
 };
 
 enum class InstructionTypes {
@@ -96,11 +100,10 @@ class InstructionInterface {
     };
     instr_t word;
   };
-
   static_assert(sizeof(GenericInstructionFormat) == 4,
                 "Generic Instruction size != 4");
 
-  virtual void ExecuteCycle();
+  virtual void ExecuteCycle(int stage);
 
   virtual void Decode();
   virtual void Execute();
@@ -117,6 +120,8 @@ class InstructionInterface {
   bool IsSType() const;
   bool IsRType() const;
   bool IsUType() const;
+
+  virtual OpCode GetOpCode() const = 0;
 
  protected:
   virtual void SetInstructionName() = 0;
@@ -139,6 +144,8 @@ class NopInstruction : public InstructionInterface {
   virtual void Execute();
   virtual void MemoryAccess();
   virtual void WriteBack();
+
+  virtual OpCode GetOpCode() const final { return OpCode::NoOp; }
 
  private:
   void SetInstructionName() final { instruction_ = "nop"; }

@@ -4,6 +4,7 @@
 #include <iterator>
 #include <memory>
 
+#include <hazard_detection.hpp>
 #include <instructions.hpp>
 #include <memory.hpp>
 #include <pipeline.hpp>
@@ -26,6 +27,15 @@ class CPU {
   RegFilePtr RegFile() const { return reg_file_; }
   PcPtr PC() const { return pc_; }
   PipelinePtr PipeLine() const { return pipeline_; }
+  HazardDetectionPtr DataHazardDetector() const {
+    return data_hazard_detector_;
+  }
+  HazardDetectionPtr ControlHazardDetector() const {
+    return control_hazard_detector_;
+  }
+
+  double GetCPI() const;
+  std::size_t GetCycles() const { return cycles_; }
 
  private:
   RegFilePtr reg_file_;
@@ -35,4 +45,5 @@ class CPU {
   HazardDetectionPtr control_hazard_detector_;
   MemoryPtr mem_;
   std::vector<Breakpoint> bkpts_;
+  std::size_t cycles_ = 0;
 };

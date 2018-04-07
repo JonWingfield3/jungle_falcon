@@ -1,4 +1,5 @@
 #include <j_type_instructions.hpp>
+#include <pipeline.hpp>
 
 ////////////////////////////////////////////////////////////////////////////////
 JalInstruction::JalInstruction(instr_t instr, RegFilePtr reg_file, PcPtr pc)
@@ -16,8 +17,7 @@ void JalInstruction::Decode() {
   Rd_ = std::make_shared<Register>(Register(rd_num));
   reg_file_->Read(*Rd_);
 
-  imm_t imm_upper_11 = (j_type_format.imm20 ? -1 : 0);
-  imm_upper_11 &= ~(0xfffff);
+  const imm_t imm_upper_11 = (j_type_format.imm20 ? -1 : 0) & ~(0xfffff);
   imm_ = static_cast<imm_t>(imm_upper_11 | (j_type_format.imm20 << 20) |
                             (j_type_format.imm19_12 << 12) |
                             (j_type_format.imm11 << 11) |
@@ -28,15 +28,22 @@ void JalInstruction::Decode() {
 
 ////////////////////////////////////////////////////////////////////////////////
 void JalInstruction::Execute() {
-  Rd_->Data() = pc_->Reg() + sizeof(instr_t);
+#if (__INSTRUCTION_ACCURATE__ == 1)
+  const int pipeline_offset = sizeof(instr_t);
+#else
+  const int pipeline_offset =
+      (Pipeline::Stages::DecodeStage - Pipeline::Stages::FetchStage + 1) *
+      sizeof(instr_t);
+
+#endif
+  Rd_->Data() = pc_->Reg() + pipeline_offset;
   InstructionInterface::Execute();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 void JalInstruction::MemoryAccess() {
-  const reg_data_t old_pc = pc_->Reg();
-  pc_->Branch(imm_);
-  InstructionInterface::WriteBack();
+  pc_->BranchOffset(imm_);
+  InstructionInterface::MemoryAccess();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -48,8 +55,7 @@ void JalInstruction::WriteBack() {
 ////////////////////////////////////////////////////////////////////////////////
 void JalInstruction::SetInstructionName() {
   std::stringstream instruction_stream;
-  instruction_stream << name_ << " x" << static_cast<int>(Rd_->Number()) << ", "
-                     << imm_;
+  instruction_stream << name_ << " x" << Rd_->Number() << ", " << imm_;
   instruction_ = instruction_stream.str();
 }
 

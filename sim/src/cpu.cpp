@@ -24,6 +24,16 @@ void CPU::Reset() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+double CPU::GetCPI() const {
+  const std::size_t instructions_completed = pipeline_->InstructionsCompleted();
+  if (instructions_completed == 0) {
+    return 0.0;
+  } else {
+    return (double)cycles_ / (double)instructions_completed;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 void CPU::ExecuteCycle(std::size_t n) {
   for (std::size_t ii = 0; ii < n; ++ii) {
     if ((ii != 0) && std::any_of(bkpts_.cbegin(), bkpts_.cend(),
@@ -36,6 +46,7 @@ void CPU::ExecuteCycle(std::size_t n) {
     pipeline_->ExecuteCycle();
     control_hazard_detector_->HandleHazard();
     data_hazard_detector_->HandleHazard();
+    ++cycles_;
   }
 }
 

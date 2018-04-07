@@ -4,6 +4,17 @@
 
 #include <commands.hpp>
 
+////////////////////////////////////////////////////////////////////////////////
+CommandInterpreter::CommandInterpreter(CpuPtr cpu, MemoryPtr mem,
+                                       std::istream& cmd_stream)
+    : cmd_stream_(cmd_stream),
+      cpu_(cpu),
+      mem_(mem),
+      data_hazard_unit_(cpu->DataHazardDetector()),
+      control_hazard_unit_(cpu->ControlHazardDetector()),
+      command_factory_(cpu, mem) {}
+
+////////////////////////////////////////////////////////////////////////////////
 void CommandInterpreter::MainLoop() {
   std::cout << "Beginning RISCV simulator (a.k.a. jungle_falcon)" << std::endl;
   do {
@@ -29,6 +40,7 @@ void CommandInterpreter::MainLoop() {
   } while (true);
 }
 
+////////////////////////////////////////////////////////////////////////////////
 CommandPtr CommandInterpreter::CommandFactory::Create(
     std::string command_string) {
   const std::size_t space_index =
@@ -47,7 +59,8 @@ CommandPtr CommandInterpreter::CommandFactory::Create(
       {std::string("q"), Command_Quit},
       {std::string("br"), Command_SetBreakpoint},
       {std::string("del"), Command_DeleteBreakpoint},
-      {std::string("sbr"), Command_ShowBreakpoints}};
+      {std::string("sbr"), Command_ShowBreakpoints},
+      {std::string("stat"), Command_Stats}};
 
   // Check if command is valid
   const auto ite = COMMANDS.find(command_op_string);
@@ -83,6 +96,10 @@ CommandPtr CommandInterpreter::CommandFactory::Create(
     case Command_ShowBreakpoints:
       return std::make_shared<ShowBreakpointsCommand>(
           ShowBreakpointsCommand(command_string, cpu_));
+    case Command_Stats:
+      return std::make_shared<ShowStatsCommand>(
+          ShowStatsCommand(command_string, cpu_, cpu_->DataHazardDetector(),
+                           cpu_->ControlHazardDetector()));
   }
   return std::make_shared<NoActionCommand>(NoActionCommand(command_string));
 }

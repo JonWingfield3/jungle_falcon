@@ -32,14 +32,24 @@ void BTypeInstructionInterface::Decode() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void BTypeInstructionInterface::Execute() { InstructionInterface::Execute(); }
+void BTypeInstructionInterface::Execute() {
+  VLOG(3) << "Taking branch: " << branch_;
+  InstructionInterface::Execute();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void BTypeInstructionInterface::MemoryAccess() {
+  if (branch_) {
+    VLOG(1) << "PC Pre Branch: " << std::hex << std::showbase << pc_->Reg();
+    pc_->BranchOffset(imm_);
+    VLOG(1) << "Branched to address: " << std::hex << std::showbase
+            << pc_->Reg();
+  }
+  InstructionInterface::MemoryAccess();
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 void BTypeInstructionInterface::WriteBack() {
-  if (branch_) {
-    pc_->Branch(imm_);
-    VLOG(2) << "Branched to address: " << pc_;
-  }
   InstructionInterface::WriteBack();
 }
 

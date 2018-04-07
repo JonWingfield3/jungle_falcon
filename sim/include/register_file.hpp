@@ -6,7 +6,6 @@
 #include <memory>
 #include <vector>
 
-#include <memory.hpp>
 #include <riscv_defs.hpp>
 
 class RegisterFile;
@@ -106,8 +105,8 @@ class ProgramCounter {
 
   mem_addr_t Reg() const;
 
-  void Branch(int offset);
   void Jump(mem_addr_t jump_addr);
+  void BranchOffset(int offset);
   void Reset();
 
   friend std::ostream& operator<<(std::ostream& stream,

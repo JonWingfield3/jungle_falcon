@@ -34,6 +34,8 @@ class JalInstruction : public InstructionInterface {
   Register& Rd() { return *Rd_; }
   const Register& Rd() const { return *Rd_; }
 
+  OpCode GetOpCode() const final { return OpCode::JAL; }
+
  protected:
   void SetInstructionName();
   std::string RegistersString() final;

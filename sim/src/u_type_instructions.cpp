@@ -17,16 +17,20 @@ void UTypeInstructionInterface::Decode() {
   Rd_ = std::make_shared<Register>(Register(rd_num));
   reg_file_->Read(*Rd_);
 
+  imm_ = static_cast<uint32_t>(u_type_format.imm31_12);
+
   InstructionInterface::Decode();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void UTypeInstructionInterface::Execute() { InstructionInterface::Execute(); }
+void UTypeInstructionInterface::Execute() {
+  Rd_->Data() = (imm_ << 12);
+  InstructionInterface::Execute();
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 void UTypeInstructionInterface::WriteBack() {
   reg_file_->Write(*Rd_);
-  VLOG(3) << "WriteBack: writing immediate to register file " << Rd_;
   InstructionInterface::WriteBack();
 }
 

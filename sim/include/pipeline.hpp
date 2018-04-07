@@ -30,11 +30,13 @@ class Pipeline {
   void ExecuteCycle();
   void AdvanceStages();
 
-  void Flush(std::size_t n = 5);
+  void Flush(std::size_t n = WriteBackStage);
+  void InsertDelay(Stages stage);
 
   const InstructionPtr& Instruction(enum Stages pipeline_stage) const;
   InstructionPtr& Instruction(enum Stages pipeline_stage);
   std::vector<std::string> InstructionNames() const;
+  std::size_t InstructionsCompleted() const { return instructions_completed_; }
 
  private:
   InstructionPtr Fetch();
@@ -43,51 +45,7 @@ class Pipeline {
   MemoryPtr mem_;
   PcPtr pc_;
   InstructionFactory instruction_factory_;
-};
-
-class IHazardDetectionUnit;
-using HazardDetectionPtr = std::shared_ptr<IHazardDetectionUnit>;
-
-class IHazardDetectionUnit {
- public:
-  explicit IHazardDetectionUnit(PipelinePtr pipeline) : pipeline_(pipeline) {}
-  virtual ~IHazardDetectionUnit() {}
-
-  virtual void HandleHazard() = 0;
-
- protected:
-  PipelinePtr pipeline_;
-
-  Register& GetRd(const InstructionPtr& instr);
-  Register& GetRs1(const InstructionPtr& instr);
-  Register& GetRs2(const InstructionPtr& instr);
-  bool WritesToRd(const InstructionPtr& instr);
-  bool ReadsFromRs1(const InstructionPtr& instr);
-  bool ReadsFromRs2(const InstructionPtr& instr);
-};
-
-class DataHazardDetectionUnit : public IHazardDetectionUnit {
- public:
-  DataHazardDetectionUnit(PipelinePtr pipeline)
-      : IHazardDetectionUnit(pipeline) {}
-  ~DataHazardDetectionUnit() override = default;
-
-  void HandleHazard() final;
-
- private:
-  // 1a type hazard forwards data from EX/MEM buf to ID/EX buf
-  void Handle1aTypeHazard(InstructionPtr& decode_instr,
-                          InstructionPtr& execute_instr);
-  // 1b type data hazard forwards data from MEM/WB buf to ID/EX buf
-  void Handle1bTypeHazard(InstructionPtr& decode_instr,
-                          InstructionPtr& memory_access_instr);
-};
-
-class ControlHazardDetectionUnit : public IHazardDetectionUnit {
- public:
-  ControlHazardDetectionUnit(PipelinePtr pipeline)
-      : IHazardDetectionUnit(pipeline) {}
-  ~ControlHazardDetectionUnit() override = default;
-
-  void HandleHazard() final;
+  bool delay_inserted_;
+  std::size_t instructions_completed_ = 0;
+  std::size_t branches_taken_ = 0;
 };

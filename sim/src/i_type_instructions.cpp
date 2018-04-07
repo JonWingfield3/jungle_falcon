@@ -1,5 +1,7 @@
 #include <i_type_instructions.hpp>
 
+#include <pipeline.hpp>
+
 ITypeInstructionInterface::ITypeInstructionInterface(instr_t instr,
                                                      RegFilePtr reg_file)
     : InstructionInterface(instr), reg_file_(reg_file) {
@@ -40,9 +42,8 @@ void ITypeInstructionInterface::WriteBack() {
 
 void ITypeInstructionInterface::SetInstructionName() {
   std::stringstream instruction_stream;
-  instruction_stream << name_ << " x" << static_cast<int>(Rd_->Number())
-                     << ", x" << static_cast<int>(Rs1_->Number()) << ", "
-                     << imm_;
+  instruction_stream << name_ << " x" << Rd_->Number() << ", x"
+                     << Rs1_->Number() << ", " << imm_;
   instruction_ = instruction_stream.str();
 }
 
@@ -126,21 +127,37 @@ void AndiInstruction::Execute() {
 
 ////////////////////////////////////////////////////////////////////////////////
 JalrInstruction::JalrInstruction(instr_t instr, RegFilePtr reg_file, PcPtr pc)
-    : ITypeInstructionInterface(instr, reg_file), pc_(pc) {}
+    : ITypeInstructionInterface(instr, reg_file), pc_(pc) {
+  name_ = "jalr";
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 void JalrInstruction::Execute() {
-  target_addr_ = Rs1_->Data() + imm_;
-  target_addr_ &= ~static_cast<mem_addr_t>(1);
+#if (__INSTRUCTION_ACCURATE__ == 1)
+  const int pipeline_offset = sizeof(instr_t);
+#else
+  // TODO: determine pipeline correction here
+  const int pipeline_offset =
+      (Pipeline::Stages::DecodeStage - Pipeline::Stages::FetchStage + 1) *
+      sizeof(instr_t);
+#endif
+  Rd_->Data() = pc_->Reg() + pipeline_offset;
+  target_addr_ = (Rs1_->Data() + imm_) & ~1;
   VLOG(3) << "Execute: Target address = " << target_addr_;
   ITypeInstructionInterface::Execute();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void JalrInstruction::WriteBack() {
+void JalrInstruction::MemoryAccess() {
   pc_->Jump(target_addr_);
-  VLOG(3) << "WriteBack: Jumping to " << target_addr_;
-  ITypeInstructionInterface::WriteBack();
+  VLOG(1) << "WriteBack: Jumping to " << target_addr_;
+  ITypeInstructionInterface::MemoryAccess();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void JalrInstruction::WriteBack() {
+  reg_file_->Write(*Rd_);
+  InstructionInterface::WriteBack();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -160,15 +177,12 @@ void LoadInstructionInterface::Execute() {
 
 ////////////////////////////////////////////////////////////////////////////////
 void LoadInstructionInterface::MemoryAccess() {
-  VLOG(3) << "MemoryAccess: read " << load_data_ << " from " << load_addr_;
   InstructionInterface::MemoryAccess();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 void LoadInstructionInterface::WriteBack() {
-  Rd_->Data() = load_data_;
   reg_file_->Write(*Rd_);
-  VLOG(3) << "WriteBack: writing " << load_data_ << " to " << Rd_;
   InstructionInterface::WriteBack();
 }
 
@@ -188,7 +202,7 @@ LbInstruction::LbInstruction(instr_t instr, RegFilePtr reg_file, MemoryPtr mem)
 
 ////////////////////////////////////////////////////////////////////////////////
 void LbInstruction::MemoryAccess() {
-  load_data_ = static_cast<signed_reg_data_t>(mem_->ReadByte(load_addr_));
+  Rd_->Data() = static_cast<signed_reg_data_t>(mem_->ReadByte(load_addr_));
   LoadInstructionInterface::MemoryAccess();
 }
 
@@ -201,7 +215,7 @@ LbuInstruction::LbuInstruction(instr_t instr, RegFilePtr reg_file,
 
 ////////////////////////////////////////////////////////////////////////////////
 void LbuInstruction::MemoryAccess() {
-  load_data_ = static_cast<reg_data_t>(mem_->ReadByte(load_addr_));
+  Rd_->Data() = static_cast<reg_data_t>(mem_->ReadByte(load_addr_));
   LoadInstructionInterface::MemoryAccess();
 }
 
@@ -213,7 +227,7 @@ LhInstruction::LhInstruction(instr_t instr, RegFilePtr reg_file, MemoryPtr mem)
 
 ////////////////////////////////////////////////////////////////////////////////
 void LhInstruction::MemoryAccess() {
-  load_data_ = static_cast<signed_reg_data_t>(mem_->ReadHalfWord(load_addr_));
+  Rd_->Data() = static_cast<signed_reg_data_t>(mem_->ReadHalfWord(load_addr_));
   LoadInstructionInterface::MemoryAccess();
 }
 
@@ -226,7 +240,7 @@ LhuInstruction::LhuInstruction(instr_t instr, RegFilePtr reg_file,
 
 ////////////////////////////////////////////////////////////////////////////////
 void LhuInstruction::MemoryAccess() {
-  load_data_ = static_cast<reg_data_t>(mem_->ReadHalfWord(load_addr_));
+  Rd_->Data() = static_cast<reg_data_t>(mem_->ReadHalfWord(load_addr_));
   LoadInstructionInterface::MemoryAccess();
 }
 
@@ -238,6 +252,6 @@ LwInstruction::LwInstruction(instr_t instr, RegFilePtr reg_file, MemoryPtr mem)
 
 ////////////////////////////////////////////////////////////////////////////////
 void LwInstruction::MemoryAccess() {
-  load_data_ = static_cast<reg_data_t>(mem_->ReadWord(load_addr_));
+  Rd_->Data() = static_cast<reg_data_t>(mem_->ReadWord(load_addr_));
   LoadInstructionInterface::MemoryAccess();
 }

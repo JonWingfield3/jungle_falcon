@@ -5,6 +5,10 @@
 #include <iomanip>
 #include <iostream>
 
+#include <memory.hpp>
+#include <pipeline.hpp>
+#include <riscv_defs.hpp>
+
 ////////////////////////////////////////////////////////////////////////////////
 Register::Register() : data_(0), reg_num_(0) {}
 
@@ -26,8 +30,9 @@ void Register::Clear() { data_ = 0; }
 
 ////////////////////////////////////////////////////////////////////////////////
 std::ostream& operator<<(std::ostream& stream, const Register& reg) {
-  stream << "{x" << std::setfill('0') << std::setw(2) << reg.reg_num_ << ": "
-         << reg.data_ << "}";
+  stream << std::dec << "{x" << std::setw(2) << std::setfill('0')
+         << reg.reg_num_ << ": 0x" << std::hex << std::setw(8)
+         << std::setfill('0') << reg.data_ << "}";
   return stream;
 }
 
@@ -62,7 +67,7 @@ void RegisterFile::DumpRegisters() const {
   for (const auto& reg : registers_) {
     std::cout << reg;
     if (++ii % kRegisterDumpWidth) {
-      std::cout << "\t";
+      std::cout << "\t\t";
     } else {
       std::cout << std::endl;
     }
@@ -106,22 +111,30 @@ ProgramCounter& ProgramCounter::operator+=(mem_offset_t offset) {
 mem_addr_t ProgramCounter::Reg() const { return program_counter_; }
 
 ////////////////////////////////////////////////////////////////////////////////
-void ProgramCounter::Branch(int offset) {
+void ProgramCounter::BranchOffset(int offset) {
 #if (__INSTRUCTION_ACCURATE__ == 1)
-  const int signed_pc = offset - 4 + static_cast<int>(program_counter_);
+  const int pipeline_offset = sizeof(instr_t);
 #else
-  const int signed_pc = offset - 4 + static_cast<int>(program_counter_) +
-                        (offset < 0 ? -16 : -12);
+  const int pipeline_offset = ((Pipeline::Stages::MemoryAccessStage -
+                                Pipeline::Stages::FetchStage + 1) *
+                               sizeof(instr_t));
 #endif
-
+  const int branch_offset = offset - pipeline_offset;
+  const int signed_pc = branch_offset + static_cast<int>(program_counter_);
   CHECK(signed_pc >= 0) << "PC went negative: " << signed_pc;
   program_counter_ = static_cast<reg_data_t>(signed_pc);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 void ProgramCounter::Jump(mem_addr_t jump_addr) {
-  program_counter_ = jump_addr - 4;
-  VLOG(4) << "Jumping to address " << jump_addr;
+#if (__INSTRUCTION_ACCURATE__ == 1)
+  const int signed_pc = jump_addr - sizeof(instr_t);
+#else
+  const int signed_pc = jump_addr - (4 * sizeof(instr_t));
+#endif
+
+  CHECK(signed_pc >= 0) << "PC went negative: " << signed_pc;
+  program_counter_ = static_cast<reg_data_t>(signed_pc);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

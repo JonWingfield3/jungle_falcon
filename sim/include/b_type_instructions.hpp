@@ -2,6 +2,8 @@
 
 #include <memory>
 
+#include <glog/logging.h>
+
 #include <instructions.hpp>
 #include <register_file.hpp>
 #include <riscv_defs.hpp>
@@ -28,8 +30,9 @@ class BTypeInstructionInterface : public InstructionInterface {
   static_assert(sizeof(BTypeInstructionFormat) == 4,
                 "B Type Instruction size != 4");
 
-  void Decode();
+  void Decode() final;
   void Execute();
+  void MemoryAccess() final;
   void WriteBack() final;
 
   Register& Rs1() { return *Rs1_; }
@@ -38,6 +41,8 @@ class BTypeInstructionInterface : public InstructionInterface {
   const Register& Rs2() const { return *Rs2_; }
 
   bool WillBranch() { return branch_; }
+
+  OpCode GetOpCode() const final { return OpCode::Bxx; }
 
  protected:
   void SetInstructionName();

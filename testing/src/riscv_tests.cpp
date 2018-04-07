@@ -36,8 +36,8 @@ TEST(pipeline_tests, addi_test) {
   RegFilePtr reg_file = std::make_shared<RegisterFile>(RegisterFile());
   InstructionFactory factory(reg_file, pc, mem);
   const instr_t instr = mem->ReadWord(pc->Reg());
-  InstructionFactory::InstructionPtr instr_ptr = factory.Create(instr);
-  instr_ptr->ExecuteCycle();
+  const InstructionPtr instr_ptr = factory.Create(instr);
+  instr_ptr->ExecuteCycle(0);
 }
 
 TEST(command_test, factory_test) {

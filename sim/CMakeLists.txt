@@ -24,6 +24,7 @@ list(APPEND SRC_FILES
   ${SOURCE_DIR}/commands.cpp
   ${SOURCE_DIR}/command_interpreter.cpp
   ${SOURCE_DIR}/cpu.cpp
+  ${SOURCE_DIR}/hazard_detection.cpp
   ${SOURCE_DIR}/instructions.cpp
   ${SOURCE_DIR}/instruction_factory.cpp
   ${SOURCE_DIR}/i_type_instructions.cpp
@@ -40,6 +41,7 @@ list(APPEND HEADER_FILES
   ${INCLUDE_DIR}/commands.hpp
   ${INCLUDE_DIR}/command_interpreter.hpp
   ${INCLUDE_DIR}/cpu.hpp
+  ${INCLUDE_DIR}/hazard_detection.hpp
   ${INCLUDE_DIR}/instructions.hpp
   ${INCLUDE_DIR}/instruction_factory.hpp
   ${INCLUDE_DIR}/i_type_instructions.hpp
