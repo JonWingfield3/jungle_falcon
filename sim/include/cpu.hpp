@@ -16,7 +16,7 @@ using Breakpoint = std::pair<int, mem_addr_t>;
 
 class CPU {
  public:
-  CPU(MemoryPtr mem);
+  CPU(MemoryPtr instr_mem, MemoryPtr data_mem);
 
   void Reset();
   void ExecuteCycle(std::size_t n = 1);
@@ -43,7 +43,8 @@ class CPU {
   PipelinePtr pipeline_;
   HazardDetectionPtr data_hazard_detector_;
   HazardDetectionPtr control_hazard_detector_;
-  MemoryPtr mem_;
+  MemoryPtr instr_mem_;
+  MemoryPtr data_mem_;
   std::vector<Breakpoint> bkpts_;
   std::size_t cycles_ = 0;
 };

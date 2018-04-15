@@ -5,14 +5,16 @@
 #include <commands.hpp>
 
 ////////////////////////////////////////////////////////////////////////////////
-CommandInterpreter::CommandInterpreter(CpuPtr cpu, MemoryPtr mem,
+CommandInterpreter::CommandInterpreter(CpuPtr cpu, MemoryPtr instr_mem,
+                                       MemoryPtr data_mem,
                                        std::istream& cmd_stream)
     : cmd_stream_(cmd_stream),
       cpu_(cpu),
-      mem_(mem),
+      instr_mem_(instr_mem),
+      data_mem_(data_mem),
       data_hazard_unit_(cpu->DataHazardDetector()),
       control_hazard_unit_(cpu->ControlHazardDetector()),
-      command_factory_(cpu, mem) {}
+      command_factory_(cpu, instr_mem, data_mem) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 void CommandInterpreter::MainLoop() {
@@ -41,6 +43,12 @@ void CommandInterpreter::MainLoop() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+CommandInterpreter::CommandFactory::CommandFactory(CpuPtr cpu,
+                                                   MemoryPtr instr_mem,
+                                                   MemoryPtr data_mem)
+    : cpu_(cpu), instr_mem_(instr_mem), data_mem_(data_mem) {}
+
+////////////////////////////////////////////////////////////////////////////////
 CommandPtr CommandInterpreter::CommandFactory::Create(
     std::string command_string) {
   const std::size_t space_index =
@@ -52,7 +60,8 @@ CommandPtr CommandInterpreter::CommandFactory::Create(
   std::map<std::string, Commands> COMMANDS{
       {std::string("h"), Command_Help},
       {std::string("dr"), Command_DumpRegisters},
-      {std::string("dm"), Command_DumpMemory},
+      {std::string("dim"), Command_DumpInstrMemory},
+      {std::string("ddm"), Command_DumpDataMemory},
       {std::string("c"), Command_Continue},
       {std::string("s"), Command_Step},
       {std::string("r"), Command_Reset},
@@ -75,9 +84,12 @@ CommandPtr CommandInterpreter::CommandFactory::Create(
     case Command_DumpRegisters:
       return std::make_shared<DumpRegistersCommand>(
           DumpRegistersCommand(command_string, cpu_->RegFile()));
-    case Command_DumpMemory:
+    case Command_DumpInstrMemory:
       return std::make_shared<DumpMemoryCommand>(
-          DumpMemoryCommand(command_string, mem_));
+          DumpMemoryCommand(command_string, instr_mem_));
+    case Command_DumpDataMemory:
+      return std::make_shared<DumpMemoryCommand>(
+          DumpMemoryCommand(command_string, data_mem_));
     case Command_Continue:
       return std::make_shared<ContinueCommand>(
           ContinueCommand(command_string, cpu_));
@@ -100,6 +112,8 @@ CommandPtr CommandInterpreter::CommandFactory::Create(
       return std::make_shared<ShowStatsCommand>(
           ShowStatsCommand(command_string, cpu_, cpu_->DataHazardDetector(),
                            cpu_->ControlHazardDetector()));
+    default:
+      break;
   }
   return std::make_shared<NoActionCommand>(NoActionCommand(command_string));
 }

@@ -9,12 +9,12 @@
 
 class InstructionFactory {
  public:
-  InstructionFactory(RegFilePtr reg_file, PcPtr pc, MemoryPtr mem);
+  InstructionFactory(RegFilePtr reg_file, PcPtr pc, MemoryPtr data_mem);
 
   InstructionPtr Create(instr_t instr);
 
  private:
   RegFilePtr reg_file_;
   PcPtr pc_;
-  MemoryPtr mem_;
+  MemoryPtr data_mem_;
 };

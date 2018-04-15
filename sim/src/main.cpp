@@ -7,20 +7,26 @@
 #include <command_interpreter.hpp>
 #include <cpu.hpp>
 #include <memory.hpp>
-#include <register_file.hpp>
 
 DEFINE_string(riscv_binary, "", "Program to run in simulator");
-DEFINE_uint32(stack_size, 65535, "Stack size for sim");
 
 int main(int argc, char* argv[]) {
   google::ParseCommandLineFlags(&argc, &argv, true);
   google::InitGoogleLogging(argv[0]);
 
-  MemoryPtr mem = std::make_shared<MainMemory>(
-      MainMemory(FLAGS_riscv_binary, FLAGS_stack_size));
+  // Init main memories
+  MemoryPtr instr_mem = std::make_shared<InstructionMemory>(
+      InstructionMemory(FLAGS_riscv_binary));
+  MemoryPtr data_mem = std::make_shared<DataMemory>(DataMemory());
 
-  CpuPtr cpu = std::make_shared<CPU>(CPU(mem));
-  CommandInterpreter interpreter(cpu, mem);
+  // Init caches
+  MemoryPtr instr_cache = std::make_shared<DirectlyMappedCache>(
+      DirectlyMappedCache(instr_mem, 16, 16));
+  MemoryPtr data_cache = std::make_shared<DirectlyMappedCache>(
+      DirectlyMappedCache(data_mem, 16, 16));
+
+  CpuPtr cpu = std::make_shared<CPU>(CPU(instr_cache, data_cache));
+  CommandInterpreter interpreter(cpu, instr_mem, data_mem);
 
   interpreter.MainLoop();
   return 0;

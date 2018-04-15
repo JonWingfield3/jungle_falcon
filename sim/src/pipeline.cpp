@@ -6,8 +6,12 @@
 #include <memory.hpp>
 
 ////////////////////////////////////////////////////////////////////////////////
-Pipeline::Pipeline(RegFilePtr reg_file, PcPtr pc, MemoryPtr mem)
-    : mem_(mem), pc_(pc), instruction_factory_(reg_file, pc, mem) {
+Pipeline::Pipeline(RegFilePtr reg_file, PcPtr pc, MemoryPtr instr_mem,
+                   MemoryPtr data_mem)
+    : pc_(pc),
+      instr_mem_(instr_mem),
+      data_mem_(data_mem),
+      instruction_factory_(reg_file, pc_, data_mem_) {
   InstructionPtr nop_instr = std::make_shared<NopInstruction>(NopInstruction());
   for (std::size_t ii = 0; ii < NumStages; ++ii) {
     instruction_queue_.push_back(nop_instr);
@@ -36,7 +40,7 @@ InstructionPtr& Pipeline::Instruction(enum Stages pipeline_stage) {
 InstructionPtr Pipeline::Fetch() {
   VLOG(1) << "##################### Start of cycle #####################";
   VLOG(1) << "Program Counter: " << std::showbase << std::hex << pc_->Reg();
-  const instr_t instr = mem_->ReadWord(pc_->Reg());
+  const instr_t instr = instr_mem_->ReadWord(pc_->Reg());
   ++*pc_;
   return instruction_factory_.Create(instr);
 }
@@ -52,7 +56,7 @@ void Pipeline::InsertDelay(Stages stage) {
 ////////////////////////////////////////////////////////////////////////////////
 void Pipeline::ExecuteCycle() {
 #if (__CYCLE_ACCURATE__ == 1)
-  // Remove oldest instruction in pipeline
+  // Remove oldest instructionin pipeline
   instruction_queue_.pop_back();
 
   if (!delay_inserted_) {

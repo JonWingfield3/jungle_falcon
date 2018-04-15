@@ -4,6 +4,7 @@
 #include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <map>
 #include <memory>
 #include <string>
 #include <vector>
@@ -12,9 +13,14 @@
 
 #include <riscv_defs.hpp>
 
+class MemoryBase;
+using MemoryPtr = std::shared_ptr<MemoryBase>;
+
+////////////////////////////////////////////////////////////////////////////////
 class MemoryBase {
  public:
-  MemoryBase() : size_(0) {}
+  MemoryBase(std::size_t size);
+  virtual ~MemoryBase() {}
 
   mem_addr_t Size() const { return size_; }
 
@@ -27,76 +33,159 @@ class MemoryBase {
   virtual uint32_t ReadWord(mem_addr_t addr) = 0;
   virtual void WriteWord(mem_addr_t addr, uint32_t data) = 0;
 
-  void CoreDump(mem_addr_t start_addr, mem_addr_t end_addr = 0,
-                std::ostream& output_stream = std::cout, std::size_t width = 4);
+  virtual void CoreDump(mem_addr_t start_addr, mem_addr_t end_addr = 0,
+                        std::ostream& output_stream = std::cout,
+                        std::size_t width = 4);
 
  protected:
   mem_addr_t size_;
-  mem_addr_t program_size_;
 };
 
-using MemoryPtr = std::shared_ptr<MemoryBase>;
-
-class MainMemory : public MemoryBase {
+////////////////////////////////////////////////////////////////////////////////
+class MainMemoryBase : public MemoryBase {
  public:
-  MainMemory(const std::string& image_name = "", std::size_t stack_size = 0)
-      : MemoryBase() {
-    if (image_name != "") {
-      LoadImage(image_name, stack_size);
-    }
-  }
+  MainMemoryBase(std::size_t size);
+  ~MainMemoryBase() override = default;
 
-  uint8_t ReadByte(mem_addr_t addr) {
-    uint8_t data;
-    Read<uint8_t>(addr, data);
-    return data;
-  }
+  uint8_t ReadByte(mem_addr_t addr);
+  void WriteByte(mem_addr_t addr, uint8_t data);
 
-  void WriteByte(mem_addr_t addr, uint8_t data) { Write<uint8_t>(addr, data); }
+  uint16_t ReadHalfWord(mem_addr_t addr);
+  void WriteHalfWord(mem_addr_t addr, uint16_t data);
 
-  uint16_t ReadHalfWord(mem_addr_t addr) {
-    uint16_t data;
-    Read<uint16_t>(addr, data);
-    return data;
-  }
-  void WriteHalfWord(mem_addr_t addr, uint16_t data) {
-    Write<uint16_t>(addr, data);
-  }
+  uint32_t ReadWord(mem_addr_t addr);
+  void WriteWord(mem_addr_t addr, uint32_t data);
 
-  uint32_t ReadWord(mem_addr_t addr) {
-    uint32_t data;
-    Read<uint32_t>(addr, data);
-    return data;
-  }
-  void WriteWord(mem_addr_t addr, uint32_t data) {
-    Write<uint32_t>(addr, data);
-  }
+ protected:
+  std::vector<uint8_t> mem_;
 
  private:
-  void LoadImage(const std::string& image_name,
-                 std::size_t data_size = kDefaultDataSize);
-
   template <typename data_t>
   void Read(mem_addr_t mem_addr, data_t& data) const;
 
   template <typename data_t>
   void Write(mem_addr_t mem_addr, data_t data);
-
-  static constexpr std::size_t kDefaultDataSize{1 << 10};  // 1k
-  static constexpr std::size_t kDefaultMemSize{1 << 12};   // 4k
-  std::vector<uint8_t> mem_;
 };
 
-class Cache : public MemoryBase {
+////////////////////////////////////////////////////////////////////////////////
+class InstructionMemory : public MainMemoryBase {
  public:
-  Cache();
+  InstructionMemory(const std::string& image = "",
+                    std::size_t size = kDefaultMemSize);
 
  private:
+  static constexpr std::size_t kDefaultMemSize{1 << 15};  // 32k
+  void LoadImage(const std::string& image_name);
 };
 
-// Template definitions for MainMemory class (must be in header)
+////////////////////////////////////////////////////////////////////////////////
+class DataMemory : public MainMemoryBase {
+ public:
+  DataMemory(std::size_t size = kDefaultDataSize);
+
+ private:
+  static constexpr std::size_t kDefaultDataSize{1 << 12};  // 4k
+};
+
+////////////////////////////////////////////////////////////////////////////////
+class CacheBase : public MemoryBase {
+ public:
+  CacheBase(MemoryPtr main_mem, std::size_t line_size_bytes = 16,
+            std::size_t num_lines = 16, std::size_t set_associativity = 1);
+  ~CacheBase() override = default;
+
+  uint8_t ReadByte(mem_addr_t addr);
+  void WriteByte(mem_addr_t addr, uint8_t data);
+
+  uint16_t ReadHalfWord(mem_addr_t addr);
+  void WriteHalfWord(mem_addr_t addr, uint16_t data);
+
+  uint32_t ReadWord(mem_addr_t addr);
+  void WriteWord(mem_addr_t addr, uint32_t data);
+
+ protected:
+  struct CacheLine {
+    CacheLine(std::size_t line_size_bytes_) : line(line_size_bytes_, 0) {}
+    CacheLine(int tag, std::vector<uint8_t> line_vals)
+        : tag(tag), line(line_vals) {}
+
+    int tag = 0;
+    std::vector<uint8_t> line;
+    bool dirty_bit = false;
+    bool valid_bit = false;
+  };
+
+  template <typename data_t>
+  void Read(mem_addr_t mem_addr, data_t& data);
+
+  template <typename data_t>
+  void Write(mem_addr_t mem_addr, data_t data);
+
+  std::size_t GetTag(mem_addr_t addr) const;
+  std::size_t GetLineIndex(mem_addr_t addr) const;
+  std::size_t GetLineOffset(mem_addr_t addr) const;
+  mem_addr_t GetAddress(std::size_t tag, std::size_t line_index,
+                        std::size_t line_offset);
+
+  bool SearchCache(mem_addr_t mem_addr, std::size_t& set) const;
+  std::size_t HandleCacheMiss(mem_addr_t addr);
+
+  const CacheLine& Line(std::size_t set, mem_addr_t mem_addr) const;
+  CacheLine& Line(std::size_t set, mem_addr_t mem_addr);
+
+  void ReadLine(mem_addr_t mem_addr, CacheLine& cache_line);
+  void WriteLine(mem_addr_t mem_addr, const CacheLine& cache_line) const;
+
+  virtual std::size_t EvictLine(mem_addr_t new_addr) = 0;
+
+  MemoryPtr main_mem_;
+  std::size_t line_size_bytes_;
+  std::size_t num_lines_;
+  std::size_t set_associativity_;
+  std::vector<std::vector<CacheLine>> lines_;
+  std::size_t num_misses_ = 0;
+  std::size_t num_hits_ = 0;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+class DirectlyMappedCache : public CacheBase {
+ public:
+  DirectlyMappedCache(MemoryPtr main_mem, std::size_t line_size_bytes_ = 16,
+                      std::size_t num_lines_ = 16);
+
+ private:
+  std::size_t EvictLine(mem_addr_t new_addr) final;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+class LRUCache : public CacheBase {
+ public:
+  LRUCache(MemoryPtr main_mem, std::size_t line_size_bytes = 16,
+           std::size_t num_lines = 16, std::size_t set_associativity = 1);
+
+ private:
+  std::size_t EvictLine(mem_addr_t new_addr) final;
+  std::size_t ticks_;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+class RandomCache : public CacheBase {
+ public:
+  RandomCache(MemoryPtr main_mem, std::size_t line_size_bytes = 16,
+              std::size_t num_lines = 16, std::size_t set_associativity = 1);
+
+ private:
+  std::size_t EvictLine(mem_addr_t new_addr) final;
+};
+
+//
+// Template implementations for MainMemoryBase class
+// Included in header to help compiler
+//
+
+////////////////////////////////////////////////////////////////////////////////
 template <typename data_t>
-void MainMemory::Read(mem_addr_t mem_addr, data_t& data) const {
+void MainMemoryBase::Read(mem_addr_t mem_addr, data_t& data) const {
   CHECK(mem_addr < size_) << "Attempting to read from invalid address: "
                           << std::hex << std::showbase << mem_addr;
 
@@ -107,17 +196,51 @@ void MainMemory::Read(mem_addr_t mem_addr, data_t& data) const {
           << mem_addr;
 }
 
+////////////////////////////////////////////////////////////////////////////////
 template <typename data_t>
-void MainMemory::Write(mem_addr_t mem_addr, data_t data) {
+void MainMemoryBase::Write(mem_addr_t mem_addr, data_t data) {
   CHECK(mem_addr < size_) << "Attempting to write to invalid address: "
                           << std::hex << std::showbase << mem_addr;
-
-  CHECK(mem_addr >= program_size_)
-      << "Error! Writing to program memory, at address " << std::hex
-      << std::showbase << mem_addr;
 
   data_t* write_ptr = reinterpret_cast<data_t*>(mem_.data() + mem_addr);
   *write_ptr = data;
   VLOG(5) << std::hex << std::showbase << "Writing " << static_cast<int>(data)
           << " to address " << mem_addr;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+template <typename data_t>
+void CacheBase::Read(mem_addr_t mem_addr, data_t& data) {
+  std::size_t set = 0;
+  if (!SearchCache(mem_addr, set)) {
+    VLOG(2) << "Cache miss!";
+    set = HandleCacheMiss(mem_addr);
+    ++num_misses_;
+  } else {
+    ++num_hits_;
+  }
+  const auto& cache_line = Line(set, mem_addr);
+  const int line_offset = GetLineOffset(mem_addr);
+  const data_t* data_ptr =
+      reinterpret_cast<const data_t*>(cache_line.line.data() + line_offset);
+  data = *data_ptr;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+template <typename data_t>
+void CacheBase::Write(mem_addr_t mem_addr, data_t data) {
+  std::size_t set = 0;
+  if (!SearchCache(mem_addr, set)) {
+    VLOG(2) << "Cache miss!";
+    set = HandleCacheMiss(mem_addr);
+    ++num_misses_;
+  } else {
+    ++num_hits_;
+  }
+  auto& cache_line = Line(set, mem_addr);
+  cache_line.dirty_bit = true;
+  const int line_offset = GetLineOffset(mem_addr);
+  data_t* data_ptr =
+      reinterpret_cast<data_t*>(cache_line.line.data() + line_offset);
+  *data_ptr = data;
 }

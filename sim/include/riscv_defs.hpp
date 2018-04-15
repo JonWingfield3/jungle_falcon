@@ -19,3 +19,6 @@ using pc_offset_t = int32_t;
 // Immediate types
 using imm_t = int32_t;
 using s_imm_t = int32_t;
+
+using word_t = uint32_t;
+using signed_word_t = int32_t;

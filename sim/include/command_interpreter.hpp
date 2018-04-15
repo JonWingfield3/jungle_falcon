@@ -12,7 +12,7 @@
 
 class CommandInterpreter {
  public:
-  CommandInterpreter(CpuPtr cpu, MemoryPtr mem,
+  CommandInterpreter(CpuPtr cpu, MemoryPtr instr_mem, MemoryPtr data_mem,
                      std::istream& cmd_stream = std::cin);
 
   void MainLoop();
@@ -20,12 +20,13 @@ class CommandInterpreter {
  private:
   class CommandFactory {
    public:
-    CommandFactory(CpuPtr cpu, MemoryPtr mem) : cpu_(cpu), mem_(mem) {}
+    CommandFactory(CpuPtr cpu, MemoryPtr instr_mem, MemoryPtr data_mem);
 
     enum Commands {
       Command_Help,
       Command_DumpRegisters,
-      Command_DumpMemory,
+      Command_DumpInstrMemory,
+      Command_DumpDataMemory,
       Command_DumpCache,
       Command_Continue,
       Command_Step,
@@ -41,19 +42,22 @@ class CommandInterpreter {
 
    private:
     CpuPtr cpu_;
-    MemoryPtr mem_;
+    MemoryPtr instr_mem_;
+    MemoryPtr data_mem_;
   };
 
   std::istream& cmd_stream_;
   CpuPtr cpu_;
-  MemoryPtr mem_;
-  CommandFactory command_factory_;
+  MemoryPtr instr_mem_;
+  MemoryPtr data_mem_;
   HazardDetectionPtr data_hazard_unit_;
   HazardDetectionPtr control_hazard_unit_;
+  CommandFactory command_factory_;
 
   const std::string menu_string_{
       "\n\tdr [registers] : dump register contents\n"
-      "\tdm [adress_range] : dump memory contents\n"
+      "\tdim [adress_range] : dump instruction memory contents\n"
+      "\tddm [adress_range] : dump data memory contents\n"
       "\tdc [line range] : dump cache contents\n"
       "\tc : continue (runs program til completion)\n"
       "\ts [number cycles] : execute some number of cycles\n"

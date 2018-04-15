@@ -16,7 +16,8 @@ using InstructionQueue = std::deque<InstructionPtr>;
 
 class Pipeline {
  public:
-  explicit Pipeline(RegFilePtr reg_file, PcPtr pc, MemoryPtr mem);
+  explicit Pipeline(RegFilePtr reg_file, PcPtr pc, MemoryPtr instr_mem,
+                    MemoryPtr data_mem);
 
   enum Stages {
     FetchStage,
@@ -41,9 +42,10 @@ class Pipeline {
  private:
   InstructionPtr Fetch();
 
-  InstructionQueue instruction_queue_;
-  MemoryPtr mem_;
   PcPtr pc_;
+  InstructionQueue instruction_queue_;
+  MemoryPtr instr_mem_;
+  MemoryPtr data_mem_;
   InstructionFactory instruction_factory_;
   bool delay_inserted_;
   std::size_t instructions_completed_ = 0;

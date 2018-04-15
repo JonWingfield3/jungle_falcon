@@ -12,8 +12,8 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 InstructionFactory::InstructionFactory(RegFilePtr reg_file, PcPtr pc,
-                                       MemoryPtr mem)
-    : reg_file_(reg_file), pc_(pc), mem_(mem) {}
+                                       MemoryPtr data_mem)
+    : reg_file_(reg_file), pc_(pc), data_mem_(data_mem) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 InstructionPtr InstructionFactory::Create(instr_t instr) {
@@ -42,19 +42,21 @@ InstructionPtr InstructionFactory::Create(instr_t instr) {
       switch (funct3) {
         case Funct3::LB:
           return std::make_shared<LbInstruction>(
-              LbInstruction(instr, reg_file_, mem_));
+              LbInstruction(instr, reg_file_, data_mem_));
         case Funct3::LBU:
           return std::make_shared<LbuInstruction>(
-              LbuInstruction(instr, reg_file_, mem_));
+              LbuInstruction(instr, reg_file_, data_mem_));
         case Funct3::LH:
           return std::make_shared<LhInstruction>(
-              LhInstruction(instr, reg_file_, mem_));
+              LhInstruction(instr, reg_file_, data_mem_));
         case Funct3::LHU:
           return std::make_shared<LhuInstruction>(
-              LhuInstruction(instr, reg_file_, mem_));
+              LhuInstruction(instr, reg_file_, data_mem_));
         case Funct3::LW:
           return std::make_shared<LwInstruction>(
-              LwInstruction(instr, reg_file_, mem_));
+              LwInstruction(instr, reg_file_, data_mem_));
+        default:
+          break;
       }
     } break;
     case OpCode::Bxx: {
@@ -80,6 +82,8 @@ InstructionPtr InstructionFactory::Create(instr_t instr) {
         case Funct3::BNE:
           return std::make_shared<BneInstruction>(
               BneInstruction(instr, reg_file_, pc_));
+        default:
+          break;
       }
     } break;
     case OpCode::ITypeArithmeticAndLogical: {
@@ -167,13 +171,15 @@ InstructionPtr InstructionFactory::Create(instr_t instr) {
       switch (funct3) {
         case Funct3::SB:
           return std::make_shared<SbInstruction>(
-              SbInstruction(instr, reg_file_, mem_));
+              SbInstruction(instr, reg_file_, data_mem_));
         case Funct3::SH:
           return std::make_shared<ShInstruction>(
-              ShInstruction(instr, reg_file_, mem_));
+              ShInstruction(instr, reg_file_, data_mem_));
         case Funct3::SW:
           return std::make_shared<SwInstruction>(
-              SwInstruction(instr, reg_file_, mem_));
+              SwInstruction(instr, reg_file_, data_mem_));
+        default:
+          break;
       }
     } break;
     default:

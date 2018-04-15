@@ -6,10 +6,12 @@
 #include <register_file.hpp>
 
 ////////////////////////////////////////////////////////////////////////////////
-CPU::CPU(MemoryPtr mem) : mem_(mem) {
+CPU::CPU(MemoryPtr instr_mem, MemoryPtr data_mem)
+    : instr_mem_(instr_mem), data_mem_(data_mem) {
   reg_file_ = std::make_shared<RegisterFile>(RegisterFile());
   pc_ = std::make_shared<ProgramCounter>(ProgramCounter());
-  pipeline_ = std::make_shared<Pipeline>(Pipeline(reg_file_, pc_, mem_));
+  pipeline_ = std::make_shared<Pipeline>(
+      Pipeline(reg_file_, pc_, instr_mem_, data_mem_));
   data_hazard_detector_ = std::make_shared<DataHazardDetectionUnit>(
       DataHazardDetectionUnit(pipeline_));
   control_hazard_detector_ = std::make_shared<ControlHazardDetectionUnit>(
