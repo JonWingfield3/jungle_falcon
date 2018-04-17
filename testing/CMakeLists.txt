@@ -25,27 +25,34 @@ include_directories(
   ${SIM_INCLUDE_DIR})
 
 set(TESTING_SOURCES
-  ${SIM_SOURCE_DIR}/r_type_instructions.cpp
   ${SIM_SOURCE_DIR}/b_type_instructions.cpp
-  ${SIM_SOURCE_DIR}/u_type_instructions.cpp
-  ${SIM_SOURCE_DIR}/s_type_instructions.cpp
-  ${SIM_SOURCE_DIR}/j_type_instructions.cpp
-  ${SIM_SOURCE_DIR}/i_type_instructions.cpp
-  ${SIM_SOURCE_DIR}/instructions.cpp
+  ${SIM_SOURCE_DIR}/commands.cpp
+  ${SIM_SOURCE_DIR}/command_interpreter.cpp
+  ${SIM_SOURCE_DIR}/cpu.cpp
   ${SIM_SOURCE_DIR}/hazard_detection.cpp
+  ${SIM_SOURCE_DIR}/instructions.cpp
   ${SIM_SOURCE_DIR}/instruction_factory.cpp
+  ${SIM_SOURCE_DIR}/i_type_instructions.cpp
+  ${SIM_SOURCE_DIR}/j_type_instructions.cpp
   ${SIM_SOURCE_DIR}/memory.cpp
   ${SIM_SOURCE_DIR}/pipeline.cpp
-  ${SIM_SOURCE_DIR}/register_file.cpp)
+  ${SIM_SOURCE_DIR}/register_file.cpp
+  ${SIM_SOURCE_DIR}/r_type_instructions.cpp
+  ${SIM_SOURCE_DIR}/s_type_instructions.cpp
+  ${SIM_SOURCE_DIR}/u_type_instructions.cpp)
 
 set(TESTING_HEADERS
   ${SIM_INCLUDE_DIR}/b_type_instructions.hpp
+  ${SIM_INCLUDE_DIR}/commands.hpp
+  ${SIM_INCLUDE_DIR}/command_interpreter.hpp
+  ${SIM_INCLUDE_DIR}/cpu.hpp
+  ${SIM_INCLUDE_DIR}/hazard_detection.hpp
+  ${SIM_INCLUDE_DIR}/hardware_object.hpp
   ${SIM_INCLUDE_DIR}/instructions.hpp
   ${SIM_INCLUDE_DIR}/instruction_factory.hpp
   ${SIM_INCLUDE_DIR}/i_type_instructions.hpp
   ${SIM_INCLUDE_DIR}/j_type_instructions.hpp
   ${SIM_INCLUDE_DIR}/memory.hpp
-  ${SIM_INCLUDE_DIR}/hazard_detection.hpp
   ${SIM_INCLUDE_DIR}/pipeline.hpp
   ${SIM_INCLUDE_DIR}/register_file.hpp
   ${SIM_INCLUDE_DIR}/riscv_defs.hpp

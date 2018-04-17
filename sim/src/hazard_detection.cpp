@@ -212,11 +212,11 @@ void ControlHazardDetectionUnit::HandleHazard() {
   InstructionPtr instr =
       pipeline_->Instruction(Pipeline::Stages::MemoryAccessStage);
 
+  const std::string& instr_name = instr->InstructionName();
   if ((instr->IsBType() &&
        reinterpret_cast<BTypeInstructionInterface*>(instr.get())
            ->WillBranch()) ||
-      instr->IsJType() ||
-      !strcmp(instr->PreDecodedInstructionName().c_str(), "jalr")) {
+      instr->IsJType() || !instr_name.find("jalr")) {
     VLOG(2) << "Detected a branch! Flushing pipeline";
     pipeline_->Flush(Pipeline::Stages::ExecuteStage);
     ++hazards_detected_;

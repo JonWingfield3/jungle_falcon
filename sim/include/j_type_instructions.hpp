@@ -9,7 +9,6 @@
 class JalInstruction : public InstructionInterface {
  public:
   explicit JalInstruction(instr_t instr, RegFilePtr reg_file, PcPtr pc);
-
   ~JalInstruction() override = default;
 
   union PACKED JTypeInstructionFormat {

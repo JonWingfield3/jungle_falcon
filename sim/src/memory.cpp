@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <cmath>
+#include <limits>
 #include <memory>
 #include <vector>
 
@@ -8,7 +9,20 @@
 #include <memory.hpp>
 
 ////////////////////////////////////////////////////////////////////////////////
-MemoryBase::MemoryBase(std::size_t size) : size_(size) {}
+MemoryBase::MemoryBase(std::size_t size, std::size_t latency)
+    : HardwareObject(), size_(size), latency_(latency) {}
+
+////////////////////////////////////////////////////////////////////////////////
+void MemoryBase::ExecuteCycle() { HardwareObject::ExecuteCycle(); }
+
+////////////////////////////////////////////////////////////////////////////////
+void MemoryBase::Reset() { HardwareObject::Reset(); }
+
+////////////////////////////////////////////////////////////////////////////////
+std::size_t MemoryBase::GetLatency() { return latency_; }
+
+////////////////////////////////////////////////////////////////////////////////
+std::size_t MemoryBase::GetAccessLatency() { return last_latency_; }
 
 ////////////////////////////////////////////////////////////////////////////////
 void MemoryBase::CoreDump(mem_addr_t start_addr, mem_addr_t end_addr,
@@ -34,7 +48,8 @@ void MemoryBase::CoreDump(mem_addr_t start_addr, mem_addr_t end_addr,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-MainMemoryBase::MainMemoryBase(std::size_t size) : MemoryBase(size) {
+MainMemoryBase::MainMemoryBase(std::size_t size, std::size_t latency)
+    : MemoryBase(size, latency) {
   mem_.resize(size_, 0);
 }
 
@@ -76,8 +91,8 @@ void MainMemoryBase::WriteWord(mem_addr_t addr, uint32_t data) {
 
 ////////////////////////////////////////////////////////////////////////////////
 InstructionMemory::InstructionMemory(const std::string& image_name,
-                                     std::size_t size)
-    : MainMemoryBase(size) {
+                                     std::size_t latency, std::size_t size)
+    : MainMemoryBase(size, latency) {
   LoadImage(image_name);
 }
 
@@ -105,15 +120,17 @@ void InstructionMemory::LoadImage(const std::string& image_name) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-DataMemory::DataMemory(std::size_t size) : MainMemoryBase(size) {}
+DataMemory::DataMemory(std::size_t latency, std::size_t size)
+    : MainMemoryBase(size, latency) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 CacheBase::CacheBase(MemoryPtr mem, std::size_t line_size_bytes,
-                     std::size_t num_lines, std::size_t set_associativity)
-    : MemoryBase(line_size_bytes_ * num_lines_),
+                     std::size_t num_lines, std::size_t set_associativity,
+                     std::size_t latency)
+    : MemoryBase((line_size_bytes_ * num_lines_), latency),
       main_mem_(mem),
       line_size_bytes_(line_size_bytes),
-      num_lines_(num_lines),
+      num_lines_(num_lines / set_associativity),
       set_associativity_(set_associativity) {
   lines_.resize(
       set_associativity_,
@@ -173,8 +190,8 @@ std::size_t CacheBase::GetLineIndex(mem_addr_t addr) const {
 
 ////////////////////////////////////////////////////////////////////////////////
 std::size_t CacheBase::GetLineOffset(mem_addr_t addr) const {
-  const int line_offset_mask = line_size_bytes_ - 1;
-  const int line_offset = addr & line_offset_mask;
+  const std::size_t line_offset_mask = line_size_bytes_ - 1;
+  const std::size_t line_offset = addr & line_offset_mask;
   return line_offset;
 }
 
@@ -188,8 +205,8 @@ mem_addr_t CacheBase::GetAddress(std::size_t tag, std::size_t line_index,
 }
 ////////////////////////////////////////////////////////////////////////////////
 bool CacheBase::SearchCache(mem_addr_t mem_addr, std::size_t& set) const {
-  const int line_idx = GetLineIndex(mem_addr);
-  const int tag = GetTag(mem_addr);
+  const std::size_t line_idx = GetLineIndex(mem_addr);
+  const std::size_t tag = GetTag(mem_addr);
   for (set = 0; set < set_associativity_; ++set) {
     if (lines_.at(set).at(line_idx).tag == tag &&
         lines_.at(set).at(line_idx).valid_bit) {
@@ -202,13 +219,13 @@ bool CacheBase::SearchCache(mem_addr_t mem_addr, std::size_t& set) const {
 ////////////////////////////////////////////////////////////////////////////////
 const CacheBase::CacheLine& CacheBase::Line(std::size_t set,
                                             mem_addr_t mem_addr) const {
-  const int line_idx = GetLineIndex(mem_addr);
+  const std::size_t line_idx = GetLineIndex(mem_addr);
   return lines_.at(set).at(line_idx);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 CacheBase::CacheLine& CacheBase::Line(std::size_t set, mem_addr_t mem_addr) {
-  const int line_idx = GetLineIndex(mem_addr);
+  const std::size_t line_idx = GetLineIndex(mem_addr);
   return lines_.at(set).at(line_idx);
 }
 
@@ -242,7 +259,7 @@ void CacheBase::WriteLine(mem_addr_t mem_addr,
 ////////////////////////////////////////////////////////////////////////////////
 std::size_t CacheBase::HandleCacheMiss(mem_addr_t mem_addr) {
   std::size_t new_set = EvictLine(mem_addr);
-  auto& new_line = Line(new_set, mem_addr);
+  CacheLine& new_line = Line(new_set, mem_addr);
   const std::size_t new_tag = GetTag(mem_addr);
   const std::size_t new_line_index = GetLineIndex(mem_addr);
   const std::size_t new_line_offset = 0;
@@ -255,13 +272,14 @@ std::size_t CacheBase::HandleCacheMiss(mem_addr_t mem_addr) {
 ////////////////////////////////////////////////////////////////////////////////
 DirectlyMappedCache::DirectlyMappedCache(MemoryPtr main_mem,
                                          std::size_t line_size_bytes,
-                                         std::size_t num_lines)
-    : CacheBase(main_mem, line_size_bytes, num_lines, 1) {}
+                                         std::size_t num_lines,
+                                         std::size_t latency)
+    : CacheBase(main_mem, line_size_bytes, num_lines, 1, latency) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 std::size_t DirectlyMappedCache::EvictLine(mem_addr_t new_addr) {
   // grabs line in first (and only) directly-mapped cache
-  auto& evict_line = Line(0, new_addr);
+  CacheLine& evict_line = Line(0, new_addr);
   const std::size_t tag = evict_line.tag;
   const std::size_t line_index = GetLineIndex(new_addr);
   const std::size_t line_offset = 0;
@@ -270,4 +288,40 @@ std::size_t DirectlyMappedCache::EvictLine(mem_addr_t new_addr) {
     WriteLine(wb_mem_addr, evict_line);
   }
   return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+LRUCache::LRUCache(MemoryPtr main_mem, std::size_t line_size_bytes,
+                   std::size_t num_lines, std::size_t set_associativity,
+                   std::size_t latency)
+    : CacheBase(main_mem, line_size_bytes, num_lines, set_associativity,
+                latency) {}
+
+////////////////////////////////////////////////////////////////////////////////
+std::size_t LRUCache::EvictLine(mem_addr_t new_addr) {
+  std::size_t min_set = 0;
+  std::size_t min_ticks = std::numeric_limits<std::size_t>::max();
+
+  for (std::size_t set_idx = 0; set_idx < set_associativity_; ++set_idx) {
+    const std::vector<CacheBase::CacheLine>& next_set = lines_.at(set_idx);
+    const CacheLine& next_min_tick_line =
+        *std::min_element(next_set.cbegin(), next_set.cend(),
+                          [](const CacheLine& lhs, const CacheLine& rhs) {
+                            return lhs.timestamp < rhs.timestamp;
+                          });
+    if (next_min_tick_line.timestamp < min_ticks) {
+      min_ticks = next_min_tick_line.timestamp;
+      min_set = set_idx;
+    }
+  }
+
+  CacheLine& evict_line = Line(min_set, new_addr);
+  const std::size_t tag = evict_line.tag;
+  const std::size_t line_index = GetLineIndex(new_addr);
+  const std::size_t line_offset = 0;
+  const mem_addr_t wb_mem_addr = GetAddress(tag, line_index, line_offset);
+  if (evict_line.valid_bit && evict_line.dirty_bit) {
+    WriteLine(wb_mem_addr, evict_line);
+  }
+  return min_set;
 }

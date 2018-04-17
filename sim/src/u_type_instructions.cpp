@@ -68,8 +68,8 @@ AuipcInstruction::AuipcInstruction(instr_t instr, RegFilePtr reg_file, PcPtr pc)
 
 ////////////////////////////////////////////////////////////////////////////////
 void AuipcInstruction::Execute() {
-  reg_data_t pc_offset = static_cast<reg_data_t>(static_cast<int>(pc_->Reg()) +
-                                                 static_cast<int>(imm_));
+  reg_data_t pc_offset = static_cast<reg_data_t>(
+      static_cast<int>(pc_->InstructionPointer()) + static_cast<int>(imm_));
   VLOG(3) << "Execute: computed pc offset address " << pc_offset;
   Rd_->Data() = pc_offset;
   UTypeInstructionInterface::Execute();

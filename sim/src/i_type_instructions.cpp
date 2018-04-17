@@ -141,7 +141,7 @@ void JalrInstruction::Execute() {
       (Pipeline::Stages::DecodeStage - Pipeline::Stages::FetchStage + 1) *
       sizeof(instr_t);
 #endif
-  Rd_->Data() = pc_->Reg() + pipeline_offset;
+  Rd_->Data() = pc_->InstructionPointer() + pipeline_offset;
   target_addr_ = (Rs1_->Data() + imm_) & ~1;
   VLOG(3) << "Execute: Target address = " << target_addr_;
   ITypeInstructionInterface::Execute();
@@ -177,11 +177,13 @@ void LoadInstructionInterface::Execute() {
 
 ////////////////////////////////////////////////////////////////////////////////
 void LoadInstructionInterface::MemoryAccess() {
+  cycles_for_stage_ = mem_->GetAccessLatency();
   InstructionInterface::MemoryAccess();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 void LoadInstructionInterface::WriteBack() {
+  cycles_for_stage_ = 0;
   reg_file_->Write(*Rd_);
   InstructionInterface::WriteBack();
 }

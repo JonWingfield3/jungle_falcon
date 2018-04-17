@@ -56,7 +56,12 @@ StepCommand::StepCommand(const std::string& command, CpuPtr cpu)
 void StepCommand::RunCommand() {
   int steps = 0;
   std::cin >> steps;
-  cpu_->ExecuteCycle(steps);
+  for (int ii = 0; ii < steps; ++ii) {
+    cpu_->ExecuteCycle();
+    if (cpu_->HitBreakpoint()) {
+      break;
+    }
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -66,7 +71,14 @@ ContinueCommand::ContinueCommand(const std::string& command, CpuPtr cpu)
       cpu_(cpu) {}
 
 ////////////////////////////////////////////////////////////////////////////////
-void ContinueCommand::RunCommand() { cpu_->ExecuteCycle(INT_MAX); }
+void ContinueCommand::RunCommand() {
+  while (true) {
+    cpu_->ExecuteCycle();
+    if (cpu_->HitBreakpoint()) {
+      break;
+    }
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 ResetCommand::ResetCommand(const std::string& command, CpuPtr cpu)
@@ -142,7 +154,7 @@ ShowStatsCommand::ShowStatsCommand(const std::string& command, CpuPtr cpu,
 void ShowStatsCommand::RunCommand() {
   std::cout << "Cycles Executed: " << cpu_->GetCycles() << std::endl
             << "Instructions Executed: "
-            << cpu_->PipeLine()->InstructionsCompleted() << std::endl
+            << cpu_->GetPipeline()->InstructionsCompleted() << std::endl
             << "CPI: " << cpu_->GetCPI() << std::endl
             << "Data Hazards: " << data_hazard_unit_->HazardsDetected()
             << std::endl

@@ -36,7 +36,7 @@ void JalInstruction::Execute() {
       sizeof(instr_t);
 
 #endif
-  Rd_->Data() = pc_->Reg() + pipeline_offset;
+  Rd_->Data() = pc_->InstructionPointer() + pipeline_offset;
   InstructionInterface::Execute();
 }
 

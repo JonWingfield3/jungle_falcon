@@ -40,10 +40,11 @@ void BTypeInstructionInterface::Execute() {
 ////////////////////////////////////////////////////////////////////////////////
 void BTypeInstructionInterface::MemoryAccess() {
   if (branch_) {
-    VLOG(1) << "PC Pre Branch: " << std::hex << std::showbase << pc_->Reg();
+    VLOG(1) << "PC Pre Branch: " << std::hex << std::showbase
+            << pc_->InstructionPointer();
     pc_->BranchOffset(imm_);
     VLOG(1) << "Branched to address: " << std::hex << std::showbase
-            << pc_->Reg();
+            << pc_->InstructionPointer();
   }
   InstructionInterface::MemoryAccess();
 }

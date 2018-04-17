@@ -7,7 +7,7 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 CPU::CPU(MemoryPtr instr_mem, MemoryPtr data_mem)
-    : instr_mem_(instr_mem), data_mem_(data_mem) {
+    : HardwareObject(), instr_mem_(instr_mem), data_mem_(data_mem) {
   reg_file_ = std::make_shared<RegisterFile>(RegisterFile());
   pc_ = std::make_shared<ProgramCounter>(ProgramCounter());
   pipeline_ = std::make_shared<Pipeline>(
@@ -19,10 +19,53 @@ CPU::CPU(MemoryPtr instr_mem, MemoryPtr data_mem)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+const std::vector<Breakpoint>& CPU::GetBreakpoints() const { return bkpts_; }
+
+////////////////////////////////////////////////////////////////////////////////
+RegFilePtr CPU::GetRegFile() const { return reg_file_; }
+
+////////////////////////////////////////////////////////////////////////////////
+PcPtr CPU::GetPC() const { return pc_; }
+
+////////////////////////////////////////////////////////////////////////////////
+PipelinePtr CPU::GetPipeline() const { return pipeline_; }
+
+////////////////////////////////////////////////////////////////////////////////
+HazardDetectionPtr CPU::GetDataHazardDetector() const {
+  return data_hazard_detector_;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+HazardDetectionPtr CPU::GetControlHazardDetector() const {
+  return control_hazard_detector_;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void CPU::ExecuteCycle() {
+  if (!at_bkpt_ &&
+      std::any_of(bkpts_.cbegin(), bkpts_.cend(), [&](const Breakpoint& bkpt) {
+        return bkpt.second == pc_->InstructionPointer();
+      })) {
+    VLOG(1) << "Hit breakpoint";
+    at_bkpt_ = true;
+  } else {
+    at_bkpt_ = false;
+    VLOG(1) << "##################### Start of cycle #####################";
+    data_mem_->ExecuteCycle();
+    instr_mem_->ExecuteCycle();
+    pipeline_->ExecuteCycle();
+    control_hazard_detector_->HandleHazard();
+    data_hazard_detector_->HandleHazard();
+    HardwareObject::ExecuteCycle();  // TODO: to exe or not exe at bkpt?
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 void CPU::Reset() {
   reg_file_->Reset();
   pc_->Reset();
-  pipeline_->Flush();
+  pipeline_->Reset();
+  HardwareObject::Reset();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -32,23 +75,6 @@ double CPU::GetCPI() const {
     return 0.0;
   } else {
     return (double)cycles_ / (double)instructions_completed;
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-void CPU::ExecuteCycle(std::size_t n) {
-  for (std::size_t ii = 0; ii < n; ++ii) {
-    if ((ii != 0) && std::any_of(bkpts_.cbegin(), bkpts_.cend(),
-                                 [&](const Breakpoint& bkpt) {
-                                   return bkpt.second == pc_->Reg();
-                                 })) {
-      VLOG(5) << "Hit breakpoint";
-      break;
-    }
-    pipeline_->ExecuteCycle();
-    control_hazard_detector_->HandleHazard();
-    data_hazard_detector_->HandleHazard();
-    ++cycles_;
   }
 }
 

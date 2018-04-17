@@ -42,6 +42,7 @@ list(APPEND HEADER_FILES
   ${INCLUDE_DIR}/command_interpreter.hpp
   ${INCLUDE_DIR}/cpu.hpp
   ${INCLUDE_DIR}/hazard_detection.hpp
+  ${INCLUDE_DIR}/hardware_object.hpp
   ${INCLUDE_DIR}/instructions.hpp
   ${INCLUDE_DIR}/instruction_factory.hpp
   ${INCLUDE_DIR}/i_type_instructions.hpp

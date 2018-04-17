@@ -1,6 +1,6 @@
 #include <command_interpreter.hpp>
 
-#include <climits>
+#include <limits>
 
 #include <commands.hpp>
 
@@ -12,8 +12,8 @@ CommandInterpreter::CommandInterpreter(CpuPtr cpu, MemoryPtr instr_mem,
       cpu_(cpu),
       instr_mem_(instr_mem),
       data_mem_(data_mem),
-      data_hazard_unit_(cpu->DataHazardDetector()),
-      control_hazard_unit_(cpu->ControlHazardDetector()),
+      data_hazard_unit_(cpu->GetDataHazardDetector()),
+      control_hazard_unit_(cpu->GetControlHazardDetector()),
       command_factory_(cpu, instr_mem, data_mem) {}
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -36,8 +36,7 @@ void CommandInterpreter::MainLoop() {
     }
 
     std::cin.clear();
-    std::cin.ignore(INT_MAX, '\n');
-
+    std::cin.ignore(std::numeric_limits<int>::max(), '\n');
     std::cout << std::endl;
   } while (true);
 }
@@ -83,7 +82,7 @@ CommandPtr CommandInterpreter::CommandFactory::Create(
   switch (command_id) {
     case Command_DumpRegisters:
       return std::make_shared<DumpRegistersCommand>(
-          DumpRegistersCommand(command_string, cpu_->RegFile()));
+          DumpRegistersCommand(command_string, cpu_->GetRegFile()));
     case Command_DumpInstrMemory:
       return std::make_shared<DumpMemoryCommand>(
           DumpMemoryCommand(command_string, instr_mem_));
@@ -110,8 +109,8 @@ CommandPtr CommandInterpreter::CommandFactory::Create(
           ShowBreakpointsCommand(command_string, cpu_));
     case Command_Stats:
       return std::make_shared<ShowStatsCommand>(
-          ShowStatsCommand(command_string, cpu_, cpu_->DataHazardDetector(),
-                           cpu_->ControlHazardDetector()));
+          ShowStatsCommand(command_string, cpu_, cpu_->GetDataHazardDetector(),
+                           cpu_->GetControlHazardDetector()));
     default:
       break;
   }

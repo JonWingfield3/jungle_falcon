@@ -10,7 +10,7 @@
 #include <riscv_defs.hpp>
 
 ////////////////////////////////////////////////////////////////////////////////
-Register::Register() : data_(0), reg_num_(0) {}
+Register::Register() : HardwareObject(), data_(0), reg_num_(0) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 Register::Register(int reg_num, reg_data_t data)
@@ -26,7 +26,10 @@ reg_data_t& Register::Data() { return data_; }
 int Register::Number() const { return reg_num_; }
 
 ////////////////////////////////////////////////////////////////////////////////
-void Register::Clear() { data_ = 0; }
+void Register::Reset() {
+  data_ = 0;
+  HardwareObject::Reset();
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 std::ostream& operator<<(std::ostream& stream, const Register& reg) {
@@ -37,7 +40,7 @@ std::ostream& operator<<(std::ostream& stream, const Register& reg) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-RegisterFile::RegisterFile() {
+RegisterFile::RegisterFile() : HardwareObject() {
   for (int ii = 0; ii < NumCPURegisters; ++ii) {
     registers_.push_back(Register(ii, 0));
   }
@@ -85,30 +88,27 @@ void RegisterFile::Write(const Register& reg) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+void ProgramCounter::ExecuteCycle() {
+  instruction_pointer_ += sizeof(instr_t);
+  HardwareObject::ExecuteCycle();
+}
+
+////////////////////////////////////////////////////////////////////////////////
 void RegisterFile::Reset() {
   for (auto& reg : registers_) {
-    reg.Clear();
+    reg.Reset();
   }
+  HardwareObject::Reset();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 ProgramCounter::ProgramCounter(mem_addr_t entry_point)
-    : program_counter_(entry_point) {}
+    : HardwareObject(), instruction_pointer_(entry_point) {}
 
 ////////////////////////////////////////////////////////////////////////////////
-ProgramCounter& ProgramCounter::operator++() {
-  program_counter_ += sizeof(instr_t);
-  return *this;
+mem_addr_t ProgramCounter::InstructionPointer() const {
+  return instruction_pointer_;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-ProgramCounter& ProgramCounter::operator+=(mem_offset_t offset) {
-  program_counter_ += offset;
-  return *this;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-mem_addr_t ProgramCounter::Reg() const { return program_counter_; }
 
 ////////////////////////////////////////////////////////////////////////////////
 void ProgramCounter::BranchOffset(int offset) {
@@ -120,9 +120,9 @@ void ProgramCounter::BranchOffset(int offset) {
                                sizeof(instr_t));
 #endif
   const int branch_offset = offset - pipeline_offset;
-  const int signed_pc = branch_offset + static_cast<int>(program_counter_);
+  const int signed_pc = branch_offset + static_cast<int>(instruction_pointer_);
   CHECK(signed_pc >= 0) << "PC went negative: " << signed_pc;
-  program_counter_ = static_cast<reg_data_t>(signed_pc);
+  instruction_pointer_ = static_cast<reg_data_t>(signed_pc);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -134,14 +134,18 @@ void ProgramCounter::Jump(mem_addr_t jump_addr) {
 #endif
 
   CHECK(signed_pc >= 0) << "PC went negative: " << signed_pc;
-  program_counter_ = static_cast<reg_data_t>(signed_pc);
+  instruction_pointer_ = static_cast<reg_data_t>(signed_pc);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void ProgramCounter::Reset() { program_counter_ = 0; }
+void ProgramCounter::Reset() {
+  instruction_pointer_ = 0;
+  HardwareObject::Reset();
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 std::ostream& operator<<(std::ostream& stream, const ProgramCounter& pc) {
-  stream << std::hex << std::showbase << static_cast<int>(pc.Reg());
+  stream << std::hex << std::showbase
+         << static_cast<int>(pc.InstructionPointer());
   return stream;
 }

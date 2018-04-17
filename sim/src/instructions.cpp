@@ -5,6 +5,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 void InstructionInterface::ExecuteCycle(int stage) {
   switch (stage) {
+    case Pipeline::Stages::FetchStage:
+      Fetch();
+      break;
     case Pipeline::Stages::DecodeStage:
       Decode();
       break;
@@ -21,28 +24,33 @@ void InstructionInterface::ExecuteCycle(int stage) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void InstructionInterface::Decode() {
-  SetInstructionName();
-  VLOG(2) << "Decode: "
-          << instruction_;  // << "\tRegisters: " << RegistersString();
+void InstructionInterface::Fetch() {
+  instruction_ = name_;
+  VLOG(2) << "Fetch: " << instruction_;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void InstructionInterface::Execute() {
-  VLOG(2) << "Execute: " << instruction_;
-  //          << "\tRegisters: " << RegistersString();
+void InstructionInterface::Decode() {
+  SetInstructionName();
+  VLOG(2) << "Decode: " << instruction_;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+void InstructionInterface::Execute() { VLOG(2) << "Execute: " << instruction_; }
 
 ////////////////////////////////////////////////////////////////////////////////
 void InstructionInterface::MemoryAccess() {
   VLOG(2) << "Memory Access: " << instruction_;
-  //          << "\tRegisters: " << RegistersString();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 void InstructionInterface::WriteBack() {
   VLOG(2) << "Write Back: " << instruction_;
-  //          << "\tRegisters: " << RegistersString();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+std::size_t InstructionInterface::GetCyclesForStage() const {
+  return cycles_for_stage_;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

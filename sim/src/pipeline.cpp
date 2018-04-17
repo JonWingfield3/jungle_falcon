@@ -8,7 +8,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 Pipeline::Pipeline(RegFilePtr reg_file, PcPtr pc, MemoryPtr instr_mem,
                    MemoryPtr data_mem)
-    : pc_(pc),
+    : HardwareObject(),
+      pc_(pc),
       instr_mem_(instr_mem),
       data_mem_(data_mem),
       instruction_factory_(reg_file, pc_, data_mem_) {
@@ -37,18 +38,9 @@ InstructionPtr& Pipeline::Instruction(enum Stages pipeline_stage) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-InstructionPtr Pipeline::Fetch() {
-  VLOG(1) << "##################### Start of cycle #####################";
-  VLOG(1) << "Program Counter: " << std::showbase << std::hex << pc_->Reg();
-  const instr_t instr = instr_mem_->ReadWord(pc_->Reg());
-  ++*pc_;
-  return instruction_factory_.Create(instr);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 void Pipeline::InsertDelay(Stages stage) {
   instruction_queue_.insert(instruction_queue_.cbegin() + stage,
-                            std::make_shared<NopInstruction>(NopInstruction()));
+                            std::make_shared<NopInstruction>());
   delay_inserted_ = true;
   VLOG(1) << "Delay inserted";
 }
@@ -56,33 +48,58 @@ void Pipeline::InsertDelay(Stages stage) {
 ////////////////////////////////////////////////////////////////////////////////
 void Pipeline::ExecuteCycle() {
 #if (__CYCLE_ACCURATE__ == 1)
-  // Remove oldest instructionin pipeline
-  instruction_queue_.pop_back();
+  VLOG(1) << "Latency Counter: " << latency_counter_;
+  if (latency_counter_ == 0) {
+    // Remove oldest instruction in pipeline
+    instruction_queue_.pop_back();
 
-  if (!delay_inserted_) {
-    const InstructionPtr fetched_instr = Fetch();
-    instruction_queue_.push_front(fetched_instr);
-    VLOG(1) << "Fetch: " << fetched_instr->PreDecodedInstructionName();
+    if (!delay_inserted_) {
+      // Fetch instruction and prepend to instruction queue.
+      const mem_addr_t instruction_pointer = pc_->InstructionPointer();
+      VLOG(1) << "Program Counter: " << std::showbase << std::hex
+              << instruction_pointer;
+      const instr_t instr = instr_mem_->ReadWord(instruction_pointer);
+      latency_counter_ = instr_mem_->GetAccessLatency();
+      const InstructionPtr fetched_instr = instruction_factory_.Create(instr);
+      instruction_queue_.push_front(fetched_instr);
+      // Increment instruction pointer.
+      pc_->ExecuteCycle();
+    } else {
+      delay_inserted_ = false;
+    }
+
+    for (int stage_idx = WriteBackStage; stage_idx >= FetchStage; --stage_idx) {
+      const InstructionPtr& next_instr =
+          Instruction(static_cast<Stages>(stage_idx));
+      next_instr->ExecuteCycle(stage_idx);
+      const std::size_t instr_latency = next_instr->GetCyclesForStage();
+      latency_counter_ = std::max(latency_counter_, instr_latency);
+    }
+
+    if (Instruction(Pipeline::Stages::WriteBackStage)->InstructionType() !=
+        InstructionTypes::NoType) {
+      ++instructions_completed_;
+      // VLOG(1) << write_back_stage->InstructionName();
+    }
   } else {
-    delay_inserted_ = false;
+    --latency_counter_;
   }
-
-  for (int stage_idx = WriteBackStage; stage_idx > FetchStage; --stage_idx) {
-    Instruction(static_cast<Stages>(stage_idx))->ExecuteCycle(stage_idx);
-  }
-
-  if (Instruction(Pipeline::Stages::WriteBackStage)->InstructionType() !=
-      InstructionTypes::NoType) {
-    ++instructions_completed_;
-    // VLOG(1) << write_back_stage->InstructionName();
-  }
-
 #else
 #if (__INSTRUCTION_ACCURATE__ == 1)
   const InstructionPtr instr_ptr = Fetch();
-  instr_ptr->ExecuteCycle();
+  instr_ptr->ExecuteCycle(0);
 #endif
 #endif
+  HardwareObject::ExecuteCycle();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void Pipeline::Reset() {
+  Flush();
+  instructions_completed_ = 0;
+  branches_taken_ = 0;
+  delay_inserted_ = false;
+  HardwareObject::Reset();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -92,4 +109,9 @@ std::vector<std::string> Pipeline::InstructionNames() const {
     instruction_names.push_back(instruction->InstructionName());
   }
   return instruction_names;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+std::size_t Pipeline::InstructionsCompleted() const {
+  return instructions_completed_;
 }

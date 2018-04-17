@@ -42,12 +42,14 @@ void STypeInstructionInterface::Execute() {
 void STypeInstructionInterface::MemoryAccess() {
   VLOG(3) << "MemoryAccess: writing" << Rs2_ << " to mem address"
           << store_address_;
+  cycles_for_stage_ = mem_->GetAccessLatency();
   InstructionInterface::MemoryAccess();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 void STypeInstructionInterface::WriteBack() {
   VLOG(3) << "WriteBack stage: Doing nothing";
+  cycles_for_stage_ = 0;
   InstructionInterface::WriteBack();
 }
 

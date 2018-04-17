@@ -4,6 +4,7 @@
 #include <iterator>
 #include <memory>
 
+#include <hardware_object.hpp>
 #include <hazard_detection.hpp>
 #include <instructions.hpp>
 #include <memory.hpp>
@@ -14,26 +15,29 @@ class CPU;
 using CpuPtr = std::shared_ptr<CPU>;
 using Breakpoint = std::pair<int, mem_addr_t>;
 
-class CPU {
+class CPU : public HardwareObject {
  public:
   CPU(MemoryPtr instr_mem, MemoryPtr data_mem);
+  ~CPU() override = default;
 
-  void Reset();
-  void ExecuteCycle(std::size_t n = 1);
+  // Override of HardwareObject methods
+  void ExecuteCycle() final;
+  void Reset() final;
+
+  // Debug
   void SetBreakpoint(mem_addr_t breakpoint_address);
   void DeleteBreakpoint(int bkpt_num);
+  bool HitBreakpoint() { return at_bkpt_; }
 
-  const std::vector<Breakpoint>& GetBreakpoints() const { return bkpts_; }
-  RegFilePtr RegFile() const { return reg_file_; }
-  PcPtr PC() const { return pc_; }
-  PipelinePtr PipeLine() const { return pipeline_; }
-  HazardDetectionPtr DataHazardDetector() const {
-    return data_hazard_detector_;
-  }
-  HazardDetectionPtr ControlHazardDetector() const {
-    return control_hazard_detector_;
-  }
+  // Getters
+  const std::vector<Breakpoint>& GetBreakpoints() const;
+  RegFilePtr GetRegFile() const;
+  PcPtr GetPC() const;
+  PipelinePtr GetPipeline() const;
+  HazardDetectionPtr GetDataHazardDetector() const;
+  HazardDetectionPtr GetControlHazardDetector() const;
 
+  // Stat functions
   double GetCPI() const;
   std::size_t GetCycles() const { return cycles_; }
 
@@ -46,5 +50,6 @@ class CPU {
   MemoryPtr instr_mem_;
   MemoryPtr data_mem_;
   std::vector<Breakpoint> bkpts_;
+  bool at_bkpt_ = false;
   std::size_t cycles_ = 0;
 };

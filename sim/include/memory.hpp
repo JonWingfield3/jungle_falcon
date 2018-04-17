@@ -11,18 +11,20 @@
 
 #include <glog/logging.h>
 
+#include <hardware_object.hpp>
 #include <riscv_defs.hpp>
 
 class MemoryBase;
 using MemoryPtr = std::shared_ptr<MemoryBase>;
 
 ////////////////////////////////////////////////////////////////////////////////
-class MemoryBase {
+class MemoryBase : public HardwareObject {
  public:
-  MemoryBase(std::size_t size);
+  MemoryBase(std::size_t size, std::size_t latency);
   virtual ~MemoryBase() {}
 
-  mem_addr_t Size() const { return size_; }
+  virtual void ExecuteCycle();
+  virtual void Reset();
 
   virtual uint8_t ReadByte(mem_addr_t addr) = 0;
   virtual void WriteByte(mem_addr_t addr, uint8_t data) = 0;
@@ -37,14 +39,19 @@ class MemoryBase {
                         std::ostream& output_stream = std::cout,
                         std::size_t width = 4);
 
+  std::size_t GetLatency();
+  std::size_t GetAccessLatency();
+
  protected:
   mem_addr_t size_;
+  std::size_t latency_;
+  std::size_t last_latency_;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
 class MainMemoryBase : public MemoryBase {
  public:
-  MainMemoryBase(std::size_t size);
+  MainMemoryBase(std::size_t size, std::size_t latency = 0);
   ~MainMemoryBase() override = default;
 
   uint8_t ReadByte(mem_addr_t addr);
@@ -70,7 +77,7 @@ class MainMemoryBase : public MemoryBase {
 ////////////////////////////////////////////////////////////////////////////////
 class InstructionMemory : public MainMemoryBase {
  public:
-  InstructionMemory(const std::string& image = "",
+  InstructionMemory(const std::string& image, std::size_t latency = 0,
                     std::size_t size = kDefaultMemSize);
 
  private:
@@ -81,7 +88,7 @@ class InstructionMemory : public MainMemoryBase {
 ////////////////////////////////////////////////////////////////////////////////
 class DataMemory : public MainMemoryBase {
  public:
-  DataMemory(std::size_t size = kDefaultDataSize);
+  DataMemory(std::size_t latency = 0, std::size_t size = kDefaultDataSize);
 
  private:
   static constexpr std::size_t kDefaultDataSize{1 << 12};  // 4k
@@ -91,7 +98,8 @@ class DataMemory : public MainMemoryBase {
 class CacheBase : public MemoryBase {
  public:
   CacheBase(MemoryPtr main_mem, std::size_t line_size_bytes = 16,
-            std::size_t num_lines = 16, std::size_t set_associativity = 1);
+            std::size_t num_lines = 16, std::size_t set_associativity = 1,
+            std::size_t latency = 0);
   ~CacheBase() override = default;
 
   uint8_t ReadByte(mem_addr_t addr);
@@ -105,14 +113,15 @@ class CacheBase : public MemoryBase {
 
  protected:
   struct CacheLine {
-    CacheLine(std::size_t line_size_bytes_) : line(line_size_bytes_, 0) {}
+    CacheLine(std::size_t line_size_bytes) : line(line_size_bytes, 0) {}
     CacheLine(int tag, std::vector<uint8_t> line_vals)
         : tag(tag), line(line_vals) {}
 
-    int tag = 0;
+    std::size_t tag = 0;
     std::vector<uint8_t> line;
     bool dirty_bit = false;
     bool valid_bit = false;
+    std::size_t timestamp = 0;
   };
 
   template <typename data_t>
@@ -150,8 +159,8 @@ class CacheBase : public MemoryBase {
 ////////////////////////////////////////////////////////////////////////////////
 class DirectlyMappedCache : public CacheBase {
  public:
-  DirectlyMappedCache(MemoryPtr main_mem, std::size_t line_size_bytes_ = 16,
-                      std::size_t num_lines_ = 16);
+  DirectlyMappedCache(MemoryPtr main_mem, std::size_t line_size_bytes = 16,
+                      std::size_t num_lines = 16, std::size_t latency = 0);
 
  private:
   std::size_t EvictLine(mem_addr_t new_addr) final;
@@ -161,18 +170,19 @@ class DirectlyMappedCache : public CacheBase {
 class LRUCache : public CacheBase {
  public:
   LRUCache(MemoryPtr main_mem, std::size_t line_size_bytes = 16,
-           std::size_t num_lines = 16, std::size_t set_associativity = 1);
+           std::size_t num_lines = 16, std::size_t set_associativity = 1,
+           std::size_t latency = 0);
 
  private:
   std::size_t EvictLine(mem_addr_t new_addr) final;
-  std::size_t ticks_;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
 class RandomCache : public CacheBase {
  public:
   RandomCache(MemoryPtr main_mem, std::size_t line_size_bytes = 16,
-              std::size_t num_lines = 16, std::size_t set_associativity = 1);
+              std::size_t num_lines = 16, std::size_t set_associativity = 1,
+              std::size_t latency = 0);
 
  private:
   std::size_t EvictLine(mem_addr_t new_addr) final;
@@ -212,15 +222,19 @@ void MainMemoryBase::Write(mem_addr_t mem_addr, data_t data) {
 template <typename data_t>
 void CacheBase::Read(mem_addr_t mem_addr, data_t& data) {
   std::size_t set = 0;
+  last_latency_ = 0;
   if (!SearchCache(mem_addr, set)) {
     VLOG(2) << "Cache miss!";
     set = HandleCacheMiss(mem_addr);
     ++num_misses_;
+    last_latency_ += main_mem_->GetLatency();
   } else {
     ++num_hits_;
   }
-  const auto& cache_line = Line(set, mem_addr);
-  const int line_offset = GetLineOffset(mem_addr);
+  last_latency_ += latency_;
+  CacheLine& cache_line = Line(set, mem_addr);
+  cache_line.timestamp = cycle_counter_;  // only used in LRU cache
+  const std::size_t line_offset = GetLineOffset(mem_addr);
   const data_t* data_ptr =
       reinterpret_cast<const data_t*>(cache_line.line.data() + line_offset);
   data = *data_ptr;
@@ -230,16 +244,20 @@ void CacheBase::Read(mem_addr_t mem_addr, data_t& data) {
 template <typename data_t>
 void CacheBase::Write(mem_addr_t mem_addr, data_t data) {
   std::size_t set = 0;
+  last_latency_ = 0;
   if (!SearchCache(mem_addr, set)) {
     VLOG(2) << "Cache miss!";
     set = HandleCacheMiss(mem_addr);
     ++num_misses_;
+    last_latency_ += main_mem_->GetLatency();
   } else {
     ++num_hits_;
   }
-  auto& cache_line = Line(set, mem_addr);
+  last_latency_ += latency_;
+  CacheLine& cache_line = Line(set, mem_addr);
   cache_line.dirty_bit = true;
-  const int line_offset = GetLineOffset(mem_addr);
+  cache_line.timestamp = cycle_counter_;  // only used in LRU cache
+  const std::size_t line_offset = GetLineOffset(mem_addr);
   data_t* data_ptr =
       reinterpret_cast<data_t*>(cache_line.line.data() + line_offset);
   *data_ptr = data;

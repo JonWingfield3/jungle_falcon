@@ -5,6 +5,7 @@
 #include <memory>
 #include <string>
 
+#include <hardware_object.hpp>
 #include <instruction_factory.hpp>
 #include <instructions.hpp>
 #include <memory.hpp>
@@ -12,9 +13,8 @@
 
 class Pipeline;
 using PipelinePtr = std::shared_ptr<Pipeline>;
-using InstructionQueue = std::deque<InstructionPtr>;
 
-class Pipeline {
+class Pipeline : public HardwareObject {
  public:
   explicit Pipeline(RegFilePtr reg_file, PcPtr pc, MemoryPtr instr_mem,
                     MemoryPtr data_mem);
@@ -28,8 +28,8 @@ class Pipeline {
     NumStages
   };
 
-  void ExecuteCycle();
-  void AdvanceStages();
+  void ExecuteCycle() final;
+  void Reset() final;
 
   void Flush(std::size_t n = WriteBackStage);
   void InsertDelay(Stages stage);
@@ -37,17 +37,18 @@ class Pipeline {
   const InstructionPtr& Instruction(enum Stages pipeline_stage) const;
   InstructionPtr& Instruction(enum Stages pipeline_stage);
   std::vector<std::string> InstructionNames() const;
-  std::size_t InstructionsCompleted() const { return instructions_completed_; }
+  std::size_t InstructionsCompleted() const;
 
  private:
-  InstructionPtr Fetch();
+  using InstructionQueue = std::deque<InstructionPtr>;
+  InstructionQueue instruction_queue_;
 
   PcPtr pc_;
-  InstructionQueue instruction_queue_;
   MemoryPtr instr_mem_;
   MemoryPtr data_mem_;
   InstructionFactory instruction_factory_;
-  bool delay_inserted_;
+  bool delay_inserted_ = false;
   std::size_t instructions_completed_ = 0;
   std::size_t branches_taken_ = 0;
+  std::size_t latency_counter_ = 0;
 };

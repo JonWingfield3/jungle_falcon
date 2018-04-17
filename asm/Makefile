@@ -46,5 +46,7 @@ clean :
 	xxd -e $(BUILD_DIR)/$< > $(BUILD_DIR)/$@
 
 %.disasm : %.out
-	$(OBJDUMP) $(BUILD_DIR)/$< -D > $(BUILD_DIR)/$@
+	$(OBJDUMP) $(BUILD_DIR)/$< -D > $@
+	python3 disasm_parser.py $@ > $(BUILD_DIR)/$@
+	rm $@
 

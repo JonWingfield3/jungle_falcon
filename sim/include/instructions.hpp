@@ -6,7 +6,7 @@
 
 #include <glog/logging.h>
 
-//#include <pipeline.hpp>
+#include <hardware_object.hpp>
 #include <register_file.hpp>
 #include <riscv_defs.hpp>
 
@@ -103,27 +103,34 @@ class InstructionInterface {
   static_assert(sizeof(GenericInstructionFormat) == 4,
                 "Generic Instruction size != 4");
 
-  virtual void ExecuteCycle(int stage);
+  // Used to create similar interface to other HardwareObjects.
+  void ExecuteCycle(int stage);
 
+  // Pipeline stages
+  // TODO: Figure out name_/instruction_ string (lose one of them)
+  virtual void Fetch();
   virtual void Decode();
   virtual void Execute();
   virtual void MemoryAccess();
   virtual void WriteBack();
 
-  InstructionTypes InstructionType() const;
-  const std::string& InstructionName() const;
-  const std::string& PreDecodedInstructionName() const { return name_; }
+  virtual std::size_t GetCyclesForStage() const;
 
+  // Getters used for debugging
+  const std::string& InstructionName() const;
+
+  // Hazard detection interface
+  InstructionTypes InstructionType() const;
   bool IsBType() const;
   bool IsIType() const;
   bool IsJType() const;
   bool IsSType() const;
   bool IsRType() const;
   bool IsUType() const;
-
   virtual OpCode GetOpCode() const = 0;
 
  protected:
+  // Filled out in decode stage. Used for debug and logging
   virtual void SetInstructionName() = 0;
   virtual std::string RegistersString() = 0;
 
@@ -131,6 +138,7 @@ class InstructionInterface {
   std::string instruction_;
   instr_t instr_;
   InstructionTypes instruction_type_;
+  std::size_t cycles_for_stage_ = 0;
 };
 
 class NopInstruction : public InstructionInterface {

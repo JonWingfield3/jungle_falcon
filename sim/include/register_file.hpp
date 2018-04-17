@@ -6,6 +6,7 @@
 #include <memory>
 #include <vector>
 
+#include <hardware_object.hpp>
 #include <riscv_defs.hpp>
 
 class RegisterFile;
@@ -17,7 +18,7 @@ using PcPtr = std::shared_ptr<ProgramCounter>;
 class Register;
 using RegPtr = std::shared_ptr<Register>;
 
-class Register {
+class Register : HardwareObject {
  public:
   Register();
   Register(int reg_num, reg_data_t data = 0);
@@ -25,8 +26,8 @@ class Register {
   const reg_data_t& Data() const;
   reg_data_t& Data();
 
+  void Reset() final;
   int Number() const;
-  void Clear();
 
   friend std::ostream& operator<<(std::ostream& stream, const Register& reg);
 
@@ -35,7 +36,7 @@ class Register {
   int reg_num_;
 };
 
-class RegisterFile {
+class RegisterFile : public HardwareObject {
  public:
   RegisterFile();
 
@@ -82,6 +83,8 @@ class RegisterFile {
   };
   static constexpr int NumCPURegisters = 32;
 
+  void Reset() final;
+
   reg_data_t Read(Registers reg) const;
   void Read(Register& reg) const;
 
@@ -90,28 +93,25 @@ class RegisterFile {
 
   void DumpRegisters() const;
 
-  void Reset();
-
  private:
   std::vector<Register> registers_;
 };
 
-class ProgramCounter {
+class ProgramCounter : public HardwareObject {
  public:
   ProgramCounter(mem_addr_t entry_point = 0);
 
-  ProgramCounter& operator++();
-  ProgramCounter& operator+=(mem_offset_t offset);
+  void ExecuteCycle() final;
+  void Reset() final;
 
-  mem_addr_t Reg() const;
+  mem_addr_t InstructionPointer() const;
 
   void Jump(mem_addr_t jump_addr);
   void BranchOffset(int offset);
-  void Reset();
 
   friend std::ostream& operator<<(std::ostream& stream,
                                   const ProgramCounter& pc);
 
  private:
-  mem_addr_t program_counter_ = 0;
+  mem_addr_t instruction_pointer_ = 0;
 };
