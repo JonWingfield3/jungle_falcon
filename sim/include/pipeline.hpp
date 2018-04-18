@@ -33,6 +33,7 @@ class Pipeline : public HardwareObject {
 
   void Flush(std::size_t n = WriteBackStage);
   void InsertDelay(Stages stage);
+  bool CheckHazards() const;
 
   const InstructionPtr& Instruction(enum Stages pipeline_stage) const;
   InstructionPtr& Instruction(enum Stages pipeline_stage);

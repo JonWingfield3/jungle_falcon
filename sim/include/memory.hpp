@@ -51,7 +51,7 @@ class MemoryBase : public HardwareObject {
 ////////////////////////////////////////////////////////////////////////////////
 class MainMemoryBase : public MemoryBase {
  public:
-  MainMemoryBase(std::size_t size, std::size_t latency = 0);
+  MainMemoryBase(std::size_t size, std::size_t latency);
   ~MainMemoryBase() override = default;
 
   uint8_t ReadByte(mem_addr_t addr);
@@ -77,7 +77,7 @@ class MainMemoryBase : public MemoryBase {
 ////////////////////////////////////////////////////////////////////////////////
 class InstructionMemory : public MainMemoryBase {
  public:
-  InstructionMemory(const std::string& image, std::size_t latency = 0,
+  InstructionMemory(const std::string& image, std::size_t latency,
                     std::size_t size = kDefaultMemSize);
 
  private:
@@ -88,7 +88,7 @@ class InstructionMemory : public MainMemoryBase {
 ////////////////////////////////////////////////////////////////////////////////
 class DataMemory : public MainMemoryBase {
  public:
-  DataMemory(std::size_t latency = 0, std::size_t size = kDefaultDataSize);
+  DataMemory(std::size_t latency, std::size_t size = kDefaultDataSize);
 
  private:
   static constexpr std::size_t kDefaultDataSize{1 << 12};  // 4k
@@ -97,19 +97,22 @@ class DataMemory : public MainMemoryBase {
 ////////////////////////////////////////////////////////////////////////////////
 class CacheBase : public MemoryBase {
  public:
-  CacheBase(MemoryPtr main_mem, std::size_t line_size_bytes = 16,
-            std::size_t num_lines = 16, std::size_t set_associativity = 1,
-            std::size_t latency = 0);
+  CacheBase(MemoryPtr main_mem, std::size_t line_size_bytes,
+            std::size_t num_lines, std::size_t set_associativity,
+            std::size_t latency, std::size_t subsequent_latency);
   ~CacheBase() override = default;
 
-  uint8_t ReadByte(mem_addr_t addr);
-  void WriteByte(mem_addr_t addr, uint8_t data);
+  void ExecuteCycle() final;
+  void Reset() final;
 
-  uint16_t ReadHalfWord(mem_addr_t addr);
-  void WriteHalfWord(mem_addr_t addr, uint16_t data);
+  uint8_t ReadByte(mem_addr_t addr) final;
+  void WriteByte(mem_addr_t addr, uint8_t data) final;
 
-  uint32_t ReadWord(mem_addr_t addr);
-  void WriteWord(mem_addr_t addr, uint32_t data);
+  uint16_t ReadHalfWord(mem_addr_t addr) final;
+  void WriteHalfWord(mem_addr_t addr, uint16_t data) final;
+
+  uint32_t ReadWord(mem_addr_t addr) final;
+  void WriteWord(mem_addr_t addr, uint32_t data) final;
 
  protected:
   struct CacheLine {
@@ -122,6 +125,7 @@ class CacheBase : public MemoryBase {
     bool dirty_bit = false;
     bool valid_bit = false;
     std::size_t timestamp = 0;
+    std::size_t swapin_counter = 0;
   };
 
   template <typename data_t>
@@ -130,37 +134,57 @@ class CacheBase : public MemoryBase {
   template <typename data_t>
   void Write(mem_addr_t mem_addr, data_t data);
 
+  // Utility functions to parse addresses
   std::size_t GetTag(mem_addr_t addr) const;
   std::size_t GetLineIndex(mem_addr_t addr) const;
   std::size_t GetLineOffset(mem_addr_t addr) const;
   mem_addr_t GetAddress(std::size_t tag, std::size_t line_index,
                         std::size_t line_offset);
+  mem_addr_t GetBaseAddress(mem_addr_t mem_addr) const;
 
-  bool SearchCache(mem_addr_t mem_addr, std::size_t& set) const;
+  // Returns reference to line. First checks for line, if not found then it
+  // handles swapping in and swapping out process. Updates latency values to
+  // reflect actions
+  CacheLine& LocateLine(mem_addr_t mem_addr);
+
+  // Returns true if line is found in cache. If found it sets the variable set
+  // to the set in which the line is located
+  bool FindLine(mem_addr_t mem_addr, std::size_t& set) const;
+
+  // Writes out valid, diry lines. Reads in new line and returns set in which
+  // new line is located. Relies on implementation of EvictLine().
   std::size_t HandleCacheMiss(mem_addr_t addr);
 
+  // Wrappers for underlying caches_ structure
   const CacheLine& Line(std::size_t set, mem_addr_t mem_addr) const;
   CacheLine& Line(std::size_t set, mem_addr_t mem_addr);
 
+  // Handles reading/writing lines to/from memory
   void ReadLine(mem_addr_t mem_addr, CacheLine& cache_line);
   void WriteLine(mem_addr_t mem_addr, const CacheLine& cache_line) const;
 
+  // Must be implemented by subclasses. Based on new request it determines which
+  // page to evict. This line is uniquely defined by the new_addr and the set
+  // number.
   virtual std::size_t EvictLine(mem_addr_t new_addr) = 0;
 
   MemoryPtr main_mem_;
   std::size_t line_size_bytes_;
   std::size_t num_lines_;
   std::size_t set_associativity_;
-  std::vector<std::vector<CacheLine>> lines_;
+  std::vector<std::vector<CacheLine>> caches_;
   std::size_t num_misses_ = 0;
   std::size_t num_hits_ = 0;
+  std::size_t subsequent_latency_ = 0;
+  std::size_t swapin_counter_max_ = 0;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
 class DirectlyMappedCache : public CacheBase {
  public:
-  DirectlyMappedCache(MemoryPtr main_mem, std::size_t line_size_bytes = 16,
-                      std::size_t num_lines = 16, std::size_t latency = 0);
+  DirectlyMappedCache(MemoryPtr main_mem, std::size_t line_size_bytes,
+                      std::size_t num_lines, std::size_t latency,
+                      std::size_t subsequent_latency);
 
  private:
   std::size_t EvictLine(mem_addr_t new_addr) final;
@@ -169,9 +193,9 @@ class DirectlyMappedCache : public CacheBase {
 ////////////////////////////////////////////////////////////////////////////////
 class LRUCache : public CacheBase {
  public:
-  LRUCache(MemoryPtr main_mem, std::size_t line_size_bytes = 16,
-           std::size_t num_lines = 16, std::size_t set_associativity = 1,
-           std::size_t latency = 0);
+  LRUCache(MemoryPtr main_mem, std::size_t line_size_bytes,
+           std::size_t num_lines, std::size_t set_associativity,
+           std::size_t latency, std::size_t subsequent_latency);
 
  private:
   std::size_t EvictLine(mem_addr_t new_addr) final;
@@ -180,9 +204,9 @@ class LRUCache : public CacheBase {
 ////////////////////////////////////////////////////////////////////////////////
 class RandomCache : public CacheBase {
  public:
-  RandomCache(MemoryPtr main_mem, std::size_t line_size_bytes = 16,
-              std::size_t num_lines = 16, std::size_t set_associativity = 1,
-              std::size_t latency = 0);
+  RandomCache(MemoryPtr main_mem, std::size_t line_size_bytes,
+              std::size_t num_lines, std::size_t set_associativity,
+              std::size_t latency, std::size_t subsequent_latency);
 
  private:
   std::size_t EvictLine(mem_addr_t new_addr) final;
@@ -221,19 +245,7 @@ void MainMemoryBase::Write(mem_addr_t mem_addr, data_t data) {
 ////////////////////////////////////////////////////////////////////////////////
 template <typename data_t>
 void CacheBase::Read(mem_addr_t mem_addr, data_t& data) {
-  std::size_t set = 0;
-  last_latency_ = 0;
-  if (!SearchCache(mem_addr, set)) {
-    VLOG(2) << "Cache miss!";
-    set = HandleCacheMiss(mem_addr);
-    ++num_misses_;
-    last_latency_ += main_mem_->GetLatency();
-  } else {
-    ++num_hits_;
-  }
-  last_latency_ += latency_;
-  CacheLine& cache_line = Line(set, mem_addr);
-  cache_line.timestamp = cycle_counter_;  // only used in LRU cache
+  CacheLine& cache_line = LocateLine(mem_addr);
   const std::size_t line_offset = GetLineOffset(mem_addr);
   const data_t* data_ptr =
       reinterpret_cast<const data_t*>(cache_line.line.data() + line_offset);
@@ -243,20 +255,8 @@ void CacheBase::Read(mem_addr_t mem_addr, data_t& data) {
 ////////////////////////////////////////////////////////////////////////////////
 template <typename data_t>
 void CacheBase::Write(mem_addr_t mem_addr, data_t data) {
-  std::size_t set = 0;
-  last_latency_ = 0;
-  if (!SearchCache(mem_addr, set)) {
-    VLOG(2) << "Cache miss!";
-    set = HandleCacheMiss(mem_addr);
-    ++num_misses_;
-    last_latency_ += main_mem_->GetLatency();
-  } else {
-    ++num_hits_;
-  }
-  last_latency_ += latency_;
-  CacheLine& cache_line = Line(set, mem_addr);
+  CacheLine& cache_line = LocateLine(mem_addr);
   cache_line.dirty_bit = true;
-  cache_line.timestamp = cycle_counter_;  // only used in LRU cache
   const std::size_t line_offset = GetLineOffset(mem_addr);
   data_t* data_ptr =
       reinterpret_cast<data_t*>(cache_line.line.data() + line_offset);

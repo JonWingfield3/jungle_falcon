@@ -28,6 +28,9 @@ void Pipeline::Flush(std::size_t n) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+bool Pipeline::CheckHazards() const { return (latency_counter_ == 0); }
+
+////////////////////////////////////////////////////////////////////////////////
 const InstructionPtr& Pipeline::Instruction(enum Stages pipeline_stage) const {
   return instruction_queue_.at(pipeline_stage);
 }
@@ -47,9 +50,15 @@ void Pipeline::InsertDelay(Stages stage) {
 
 ////////////////////////////////////////////////////////////////////////////////
 void Pipeline::ExecuteCycle() {
-#if (__CYCLE_ACCURATE__ == 1)
+#if (__INSTRUCTION_ACCURATE__ == 1)
+  const InstructionPtr instr_ptr = Fetch();
+  instr_ptr->ExecuteCycle(0);
+#else
+
   VLOG(1) << "Latency Counter: " << latency_counter_;
   if (latency_counter_ == 0) {
+    VLOG(1) << "##################### Start of cycle #####################";
+
     // Remove oldest instruction in pipeline
     instruction_queue_.pop_back();
 
@@ -84,11 +93,6 @@ void Pipeline::ExecuteCycle() {
   } else {
     --latency_counter_;
   }
-#else
-#if (__INSTRUCTION_ACCURATE__ == 1)
-  const InstructionPtr instr_ptr = Fetch();
-  instr_ptr->ExecuteCycle(0);
-#endif
 #endif
   HardwareObject::ExecuteCycle();
 }

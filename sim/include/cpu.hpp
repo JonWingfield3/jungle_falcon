@@ -39,7 +39,6 @@ class CPU : public HardwareObject {
 
   // Stat functions
   double GetCPI() const;
-  std::size_t GetCycles() const { return cycles_; }
 
  private:
   RegFilePtr reg_file_;
@@ -51,5 +50,4 @@ class CPU : public HardwareObject {
   MemoryPtr data_mem_;
   std::vector<Breakpoint> bkpts_;
   bool at_bkpt_ = false;
-  std::size_t cycles_ = 0;
 };

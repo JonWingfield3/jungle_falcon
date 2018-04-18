@@ -3,6 +3,7 @@
 #include <instructions.hpp>
 #include <pipeline.hpp>
 
+class Pipeline;
 class IHazardDetectionUnit;
 using HazardDetectionPtr = std::shared_ptr<IHazardDetectionUnit>;
 

@@ -50,12 +50,14 @@ void CPU::ExecuteCycle() {
     at_bkpt_ = true;
   } else {
     at_bkpt_ = false;
-    VLOG(1) << "##################### Start of cycle #####################";
+    const bool check_hazards = pipeline_->CheckHazards();
     data_mem_->ExecuteCycle();
     instr_mem_->ExecuteCycle();
     pipeline_->ExecuteCycle();
-    control_hazard_detector_->HandleHazard();
-    data_hazard_detector_->HandleHazard();
+    if (check_hazards) {
+      control_hazard_detector_->HandleHazard();
+      data_hazard_detector_->HandleHazard();
+    }
     HardwareObject::ExecuteCycle();  // TODO: to exe or not exe at bkpt?
   }
 }
@@ -74,7 +76,7 @@ double CPU::GetCPI() const {
   if (instructions_completed == 0) {
     return 0.0;
   } else {
-    return (double)cycles_ / (double)instructions_completed;
+    return (double)cycle_counter_ / (double)instructions_completed;
   }
 }
 
