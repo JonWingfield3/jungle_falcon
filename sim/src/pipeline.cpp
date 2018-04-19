@@ -55,7 +55,7 @@ void Pipeline::ExecuteCycle() {
   instr_ptr->ExecuteCycle(0);
 #else
 
-  VLOG(1) << "Latency Counter: " << latency_counter_;
+  VLOG(4) << "Latency Counter: " << latency_counter_;
   if (latency_counter_ == 0) {
     VLOG(1) << "##################### Start of cycle #####################";
 

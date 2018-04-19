@@ -94,12 +94,15 @@ class DataMemory : public MainMemoryBase {
   static constexpr std::size_t kDefaultDataSize{1 << 12};  // 4k
 };
 
+enum class CacheWritePolicy { WriteBack, WriteThrough };
+
 ////////////////////////////////////////////////////////////////////////////////
 class CacheBase : public MemoryBase {
  public:
   CacheBase(MemoryPtr main_mem, std::size_t line_size_bytes,
             std::size_t num_lines, std::size_t set_associativity,
-            std::size_t latency, std::size_t subsequent_latency);
+            std::size_t latency, std::size_t subsequent_latency,
+            CacheWritePolicy write_policy);
   ~CacheBase() override = default;
 
   void ExecuteCycle() final;
@@ -177,6 +180,7 @@ class CacheBase : public MemoryBase {
   std::size_t num_hits_ = 0;
   std::size_t subsequent_latency_ = 0;
   std::size_t swapin_counter_max_ = 0;
+  CacheWritePolicy write_policy_;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -184,7 +188,8 @@ class DirectlyMappedCache : public CacheBase {
  public:
   DirectlyMappedCache(MemoryPtr main_mem, std::size_t line_size_bytes,
                       std::size_t num_lines, std::size_t latency,
-                      std::size_t subsequent_latency);
+                      std::size_t subsequent_latency,
+                      CacheWritePolicy write_policy);
 
  private:
   std::size_t EvictLine(mem_addr_t new_addr) final;
@@ -195,18 +200,8 @@ class LRUCache : public CacheBase {
  public:
   LRUCache(MemoryPtr main_mem, std::size_t line_size_bytes,
            std::size_t num_lines, std::size_t set_associativity,
-           std::size_t latency, std::size_t subsequent_latency);
-
- private:
-  std::size_t EvictLine(mem_addr_t new_addr) final;
-};
-
-////////////////////////////////////////////////////////////////////////////////
-class RandomCache : public CacheBase {
- public:
-  RandomCache(MemoryPtr main_mem, std::size_t line_size_bytes,
-              std::size_t num_lines, std::size_t set_associativity,
-              std::size_t latency, std::size_t subsequent_latency);
+           std::size_t latency, std::size_t subsequent_latency,
+           CacheWritePolicy write_policy);
 
  private:
   std::size_t EvictLine(mem_addr_t new_addr) final;
@@ -245,7 +240,7 @@ void MainMemoryBase::Write(mem_addr_t mem_addr, data_t data) {
 ////////////////////////////////////////////////////////////////////////////////
 template <typename data_t>
 void CacheBase::Read(mem_addr_t mem_addr, data_t& data) {
-  CacheLine& cache_line = LocateLine(mem_addr);
+  const CacheLine& cache_line = LocateLine(mem_addr);
   const std::size_t line_offset = GetLineOffset(mem_addr);
   const data_t* data_ptr =
       reinterpret_cast<const data_t*>(cache_line.line.data() + line_offset);
@@ -261,4 +256,17 @@ void CacheBase::Write(mem_addr_t mem_addr, data_t data) {
   data_t* data_ptr =
       reinterpret_cast<data_t*>(cache_line.line.data() + line_offset);
   *data_ptr = data;
+  if (write_policy_ == CacheWritePolicy::WriteThrough) {
+    switch (sizeof(data_t)) {
+      case 1:
+        main_mem_->WriteByte(mem_addr, data);
+        break;
+      case 2:
+        main_mem_->WriteHalfWord(mem_addr, data);
+        break;
+      case 4:
+        main_mem_->WriteByte(mem_addr, data);
+        break;
+    }
+  }
 }

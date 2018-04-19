@@ -63,7 +63,7 @@ TEST(pipeline_tests, addi_test) {
 TEST(cache_tests, dm_cache_rw) {
   MemoryPtr test_mem = std::make_shared<DataMemory>(DataMemory(0, 0));
   MemoryPtr cache = std::make_shared<DirectlyMappedCache>(
-      DirectlyMappedCache(test_mem, 4, 1, 0, 0));
+      DirectlyMappedCache(test_mem, 4, 1, 0, 0, CacheWritePolicy::WriteBack));
 
   constexpr int NUM_LOOPS{64};
   for (int ii = 0; ii < NUM_LOOPS; ++ii) {
@@ -119,7 +119,8 @@ TEST(cache_tests, lru_associative_cache_rw) {
 
   MemoryPtr cache = std::make_shared<LRUCache>(
       LRUCache(test_mem, CACHE_LINE_SIZE, NUM_CACHE_LINES, SET_ASSOCIATIVITY,
-               CACHE_LATENCY, MEMORY_SUBSEQUENT_WORD_LATENCY));
+               CACHE_LATENCY, MEMORY_SUBSEQUENT_WORD_LATENCY,
+               CacheWritePolicy::WriteBack));
 
   VLOG(1)
       << "Setting words at memory addresses 0 - 255 with the values 0 - 63...";
@@ -212,11 +213,13 @@ TEST(program_tests, ins_assembly_test_with_cache) {
             // Init caches
             MemoryPtr instr_cache = std::make_shared<LRUCache>(LRUCache(
                 instr_mem, CACHE_LINE_SIZE, NUM_CACHE_LINES, SET_ASSOCIATIVITY,
-                CACHE_LATENCY, MEMORY_SUBSEQUENT_WORD_LATENCY));
+                CACHE_LATENCY, MEMORY_SUBSEQUENT_WORD_LATENCY,
+                CacheWritePolicy::WriteBack));
 
             MemoryPtr data_cache = std::make_shared<LRUCache>(LRUCache(
                 data_mem, CACHE_LINE_SIZE, NUM_CACHE_LINES, SET_ASSOCIATIVITY,
-                CACHE_LATENCY, MEMORY_SUBSEQUENT_WORD_LATENCY));
+                CACHE_LATENCY, MEMORY_SUBSEQUENT_WORD_LATENCY,
+                CacheWritePolicy::WriteBack));
 
             CpuPtr cpu = std::make_shared<CPU>(CPU(instr_cache, data_cache));
 
@@ -238,6 +241,33 @@ TEST(program_tests, ins_assembly_test_with_cache) {
         }
       }
     }
+  }
+}
+
+TEST(cache_tests, write_through_test) {
+  MemoryPtr test_mem = std::make_shared<DataMemory>(DataMemory(0));
+  MemoryPtr cache = std::make_shared<DirectlyMappedCache>(DirectlyMappedCache(
+      test_mem, 4, 1, 0, 0, CacheWritePolicy::WriteThrough));
+
+  constexpr int NUM_LOOPS{64};
+  for (int ii = 0; ii < NUM_LOOPS; ++ii) {
+    test_mem->WriteByte(ii, ii);
+  }
+
+  test_mem->CoreDump(0, NUM_LOOPS);
+
+  for (int ii = 0; ii < NUM_LOOPS; ++ii) {
+    const int byte = cache->ReadByte(ii);
+    CHECK(byte == ii) << "Read incorrect data! (" << byte << " != " << ii
+                      << ")";
+    const int write_byte = NUM_LOOPS - ii;
+    cache->WriteByte(ii, write_byte);
+  }
+
+  for (int ii = 0; ii < NUM_LOOPS; ++ii) {
+    const int byte = test_mem->ReadByte(ii);
+    CHECK(byte == (NUM_LOOPS - ii)) << "Read incorrect data! (" << byte
+                                    << " != " << (NUM_LOOPS - ii) << ")";
   }
 }
 

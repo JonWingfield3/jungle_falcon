@@ -22,6 +22,7 @@ DEFINE_uint32(
 DEFINE_uint32(
     subsequent_word_latency, 1,
     "Number of cycles needed to access subsequent words in a line from memory");
+DEFINE_string(write_policy, "write_back", "Write policy for caches");
 
 int main(int argc, char* argv[]) {
   google::ParseCommandLineFlags(&argc, &argv, true);
@@ -41,13 +42,22 @@ int main(int argc, char* argv[]) {
   const std::size_t CACHE_LATENCY{FLAGS_cache_latency};
   const std::size_t SET_ASSOCIATIVITY{FLAGS_set_associativity};
   const std::size_t SUBSEQUENT_WORD_LATENCY{FLAGS_subsequent_word_latency};
+  const std::string WRITE_POLICY_STR{FLAGS_write_policy};
+
+  CHECK((WRITE_POLICY_STR.compare("write_back") == 0 ||
+         WRITE_POLICY_STR.compare("write_through") == 0))
+      << "Unknown/Unsupported write policy!";
+
+  CacheWritePolicy WRITE_POLICY =
+      (WRITE_POLICY_STR.compare("write_back") ? CacheWritePolicy::WriteBack
+                                              : CacheWritePolicy::WriteThrough);
 
   MemoryPtr instr_cache = std::make_shared<LRUCache>(
       LRUCache(instr_mem, LINE_SIZE, NUM_LINES, SET_ASSOCIATIVITY,
-               CACHE_LATENCY, SUBSEQUENT_WORD_LATENCY));
+               CACHE_LATENCY, SUBSEQUENT_WORD_LATENCY, WRITE_POLICY));
   MemoryPtr data_cache = std::make_shared<LRUCache>(
       LRUCache(data_mem, LINE_SIZE, NUM_LINES, SET_ASSOCIATIVITY, CACHE_LATENCY,
-               SUBSEQUENT_WORD_LATENCY));
+               SUBSEQUENT_WORD_LATENCY, WRITE_POLICY));
 
   // Init CPU
   CpuPtr cpu = std::make_shared<CPU>(CPU(instr_cache, data_cache));

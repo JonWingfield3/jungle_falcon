@@ -129,13 +129,15 @@ DataMemory::DataMemory(std::size_t latency, std::size_t size)
 ////////////////////////////////////////////////////////////////////////////////
 CacheBase::CacheBase(MemoryPtr mem, std::size_t line_size_bytes,
                      std::size_t num_lines, std::size_t set_associativity,
-                     std::size_t latency, std::size_t subsequent_latency)
+                     std::size_t latency, std::size_t subsequent_latency,
+                     CacheWritePolicy write_policy)
     : MemoryBase((line_size_bytes_ * num_lines_), latency),
       main_mem_(mem),
       line_size_bytes_(line_size_bytes),
       num_lines_(num_lines / set_associativity),
       set_associativity_(set_associativity),
-      subsequent_latency_(subsequent_latency) {
+      subsequent_latency_(subsequent_latency),
+      write_policy_(write_policy) {
   swapin_counter_max_ = line_size_bytes / sizeof(word_t) * subsequent_latency;
   caches_.resize(
       set_associativity_,
@@ -333,19 +335,21 @@ DirectlyMappedCache::DirectlyMappedCache(MemoryPtr main_mem,
                                          std::size_t line_size_bytes,
                                          std::size_t num_lines,
                                          std::size_t latency,
-                                         std::size_t subsequent_latency)
+                                         std::size_t subsequent_latency,
+                                         CacheWritePolicy write_policy)
     : CacheBase(main_mem, line_size_bytes, num_lines, 1, latency,
-                subsequent_latency) {}
+                subsequent_latency, write_policy) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 std::size_t DirectlyMappedCache::EvictLine(mem_addr_t new_addr) {
-  // grabs line in first (and only) directly-mapped cache
+  // Grabs line in first (and only) directly-mapped cache
   CacheLine& evict_line = Line(0, new_addr);
   const std::size_t tag = evict_line.tag;
   const std::size_t line_index = GetLineIndex(new_addr);
   const std::size_t line_offset = 0;
   const mem_addr_t wb_mem_addr = GetAddress(tag, line_index, line_offset);
-  if (evict_line.valid_bit && evict_line.dirty_bit) {
+  if (evict_line.valid_bit && evict_line.dirty_bit &&
+      write_policy_ == CacheWritePolicy::WriteBack) {
     WriteLine(wb_mem_addr, evict_line);
   }
   return 0;
@@ -354,9 +358,10 @@ std::size_t DirectlyMappedCache::EvictLine(mem_addr_t new_addr) {
 ////////////////////////////////////////////////////////////////////////////////
 LRUCache::LRUCache(MemoryPtr main_mem, std::size_t line_size_bytes,
                    std::size_t num_lines, std::size_t set_associativity,
-                   std::size_t latency, std::size_t subsequent_latency)
+                   std::size_t latency, std::size_t subsequent_latency,
+                   CacheWritePolicy write_policy)
     : CacheBase(main_mem, line_size_bytes, num_lines, set_associativity,
-                latency, subsequent_latency) {}
+                latency, subsequent_latency, write_policy) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 std::size_t LRUCache::EvictLine(mem_addr_t new_addr) {
@@ -381,7 +386,8 @@ std::size_t LRUCache::EvictLine(mem_addr_t new_addr) {
   const std::size_t line_index = GetLineIndex(new_addr);
   const std::size_t line_offset = 0;
   const mem_addr_t wb_mem_addr = GetAddress(tag, line_index, line_offset);
-  if (evict_line.valid_bit && evict_line.dirty_bit) {
+  if (evict_line.valid_bit && evict_line.dirty_bit &&
+      write_policy_ == CacheWritePolicy::WriteBack) {
     WriteLine(wb_mem_addr, evict_line);
   }
 
