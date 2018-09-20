@@ -16,7 +16,3 @@ Contents:
 
   asm 
     -- ASM programs used as input to sim
-
-  gui 
-    -- source code for QT-based GUI (still a WIP)
-    
