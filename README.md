@@ -17,3 +17,6 @@ Contents:
 
   asm 
     -- ASM programs used as input to sim
+
+Building:
+  jungle_falcon may be build on a Linux system using CMake. The only dependencies are gtest and gflags.
